@@ -1,6 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
-#include "include/ros2_mindvision_camera/ImgPublisher.h"
-#include "include/ros2_mindvision_camera/MindVision.h"
+#include "ros2_mindvision_camera/ImgPublisher.h"
+#include "ros2_mindvision_camera/MindVision.h"
 
 using namespace std;
 
