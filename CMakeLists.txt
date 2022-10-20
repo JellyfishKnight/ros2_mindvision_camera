@@ -10,6 +10,21 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(OpenCV 4 REQUIRED)
+
+include_directories(
+  ${OpenCV_INCLUDE_DIRECTORIES}
+)
+
+add_library(
+  ImgPublisher
+  src/driver.cpp
+)
+
+add_library(
+  MindVision
+  src/MindVision.cpp
+)
 
 add_executable(driver src/driver.cpp)
 target_include_directories(driver PUBLIC
@@ -21,6 +36,9 @@ ament_target_dependencies(
   "rclcpp"
   "std_msgs"
   "cv_bridge"
+  ${OpenCV_LIBS}
+  ImgPublisher
+  MindVision
 )
 
 install(TARGETS driver

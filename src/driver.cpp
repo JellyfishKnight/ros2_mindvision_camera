@@ -1,10 +1,13 @@
-#include <cstdio>
+#include "rclcpp/rclcpp.hpp"
+#include "include/ros2_mindvision_camera/ImgPublisher.h"
+#include "include/ros2_mindvision_camera/MindVision.h"
 
-int main(int argc, char ** argv)
+using namespace std;
+
+int main(int argc, char const *argv[])
 {
-  (void) argc;
-  (void) argv;
+  rclcpp::init(argc, argv);
 
-  printf("hello world ros2_mindvision_camera package\n");
+  rclcpp::shutdown();
   return 0;
 }
