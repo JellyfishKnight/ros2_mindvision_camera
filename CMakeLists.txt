@@ -16,7 +16,7 @@ find_package(OpenCV 4 REQUIRED)
 
 include_directories(
   include
-  ${OpenCV_INCLUDE_DIRECTORIES}
+  /usr/include/opencv4
   /opt/ros/humble/include/action_msgs
   /opt/ros/humble/include/image_geometry 
   /opt/ros/humble/include/nav_msgs rcpputils
