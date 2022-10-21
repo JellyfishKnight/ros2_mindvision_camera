@@ -1,3 +1,7 @@
+#ifndef IMGPUBLISHER
+#define IMGPUBLISHER
+
+
 #include "rclcpp/rclcpp.hpp"
 #include "iostream"
 #include "opencv4/opencv2/core.hpp"
@@ -21,10 +25,12 @@ private:
     bool img_convert(Mat cvImg);
 
 public:
-    ImgPublisher(int rate) : Node("Image_publisher") {
-        publisher = this->create_publisher<sensor_msgs::msg::Image>("cvImg", rate);
+    ImgPublisher(string t, int rate) : Node("Image_publisher"), topic(t) {
+        publisher = this->create_publisher<sensor_msgs::msg::Image>(topic, rate);
         image_msg = nullptr;
     };
 
     void publish(Mat input_image);
 };
+
+#endif 

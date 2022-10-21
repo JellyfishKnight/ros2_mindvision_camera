@@ -60,7 +60,7 @@ public:
      * @param t 话题名称
      */
     explicit MindVision(string t, int frequency = 10000) : topic(move(t)) {
-        imgPublisher = new ImgPublisher(frequency);
+        imgPublisher = new ImgPublisher(topic, frequency);
     }
     /**
      * @brief 析构器

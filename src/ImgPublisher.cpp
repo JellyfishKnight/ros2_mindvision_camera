@@ -1,5 +1,3 @@
-#ifndef IMGPUBLISHER
-#define IMGPUBLISHER
 
 #include "ros2_mindvision_camera/ImgPublisher.h"
 #include "opencv4/opencv2/core.hpp"
@@ -27,4 +25,3 @@ bool ImgPublisher::img_convert(Mat cvImg) {
     }
 }
 
-#endif 
