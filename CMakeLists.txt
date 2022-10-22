@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.0)
-project(ros2_mindvision_camera)
+project(mindvision_camera)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,12 +39,12 @@ target_link_libraries(
 
 rclcpp_components_register_node(
   ${PROJECT_NAME}
-  PLUGIN MindVision_Camera::MindVision
+  PLUGIN mindvision_camera::MindVision
   EXECUTABLE ${PROJECT_NAME}_node
 )
 
 if(BUILD_TESTING) 
-  find_package(ament_lint_auto REQURIED
+  find_package(ament_lint_auto REQURIED)
   list(
     APPEND AMENT_LINT_AUTO_EXCLUDE
     ament_cmake_copyright

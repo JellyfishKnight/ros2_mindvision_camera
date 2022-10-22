@@ -1,6 +1,7 @@
 #include "iostream"
 #include "ros2_mindvision_camera/MindVision.h"
 #include "opencv2/core.hpp"
+#include "opencv2/calib3d.hpp"
 #include "cv_bridge/cv_bridge.h"
 
 using namespace std;
@@ -103,7 +104,7 @@ void MindVision::publish() {
             cout << "Grab failed!" << endl;
             return ;
         }
-        if (img_convert(this->src)) {
+        if (img_convert()) {
             this->ImgPublisher->publish((*this->image_msg));
             RCLCPP_INFO(this->get_logger(), "Publishing...");
         }
@@ -115,8 +116,31 @@ void MindVision::publish() {
     }
 }
 
-bool MindVision::img_convert(Mat cvImg) {
-    this->image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", cvImg).toImageMsg();
+void MindVision::pre_process() {
+    Mat cameraMatrix;
+    Mat distCoeff;
+    this->filestorage = new FileStorage(this->root, FileStorage::READ);
+    try
+    {
+        if (this->filestorage->isOpened()) {
+            (*this->filestorage)["Intrinsic_Matrix_MV"] >> cameraMatrix;
+            (*this->filestorage)["Distortion_Coefficients_MV"] >> distCoeff;
+        } else {
+            RCLCPP_WARN(this->get_logger(), "Data read failed!");
+        }
+        Mat dist = src.clone();
+        undistort(this->src, dist, cameraMatrix, distCoeff);
+        src = dist.clone();
+    }
+    catch (std::exception error)
+    {
+        RCLCPP_WARN(this->get_logger(), "Pre-process failed!");
+    }
+}
+
+bool MindVision::img_convert() {
+    this->pre_process();
+    this->image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", src).toImageMsg();
     if (this->image_msg = nullptr) {
         return false;
     } else {

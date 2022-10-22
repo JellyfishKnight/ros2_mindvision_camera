@@ -10,9 +10,9 @@
 #include "cv_bridge/cv_bridge.h"
 
 using namespace std;
+using namespace cv;
 
-
-namespace MindVision_Camera {
+namespace mindvision_camera {
 class MindVision : public rclcpp::Node
 {
 private:
@@ -42,6 +42,10 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr ImgPublisher;
     //Frequency
     int frequency;
+    //root of data file
+    string root;
+    //Pointer of file read
+    FileStorage *filestorage;
     /**
      * @brief 设置相机参数
      */
@@ -81,14 +85,19 @@ private:
     /**
      * @brief convert cvImg to sensor_msgs::msg::Image
      */
-    bool img_convert(Mat cvImg);
+    bool img_convert();
+    /**
+     * @brief undisort the cv image
+    */
+    void pre_process();
+
 public:
     /**
      * @brief 构造函数
      * @param frequency 发送频率(每秒多少次)
      * @param t 话题名称
      */
-    explicit MindVision(string t, int frequency = 10000) : Node("MindVision"), frequency(frequency) {
+    explicit MindVision(string data_root, string t, int frequency = 10000) : Node("MindVision"), frequency(frequency), root(data_root) {
         if (this->init() && this->start())
         {
             this->publish();
@@ -103,9 +112,9 @@ public:
      * @brief 析构器
      */
     ~MindVision() {
-        
+        delete filestorage;
+
     }
-    
 };
 }
 
