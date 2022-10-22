@@ -97,7 +97,7 @@ public:
      * @param frequency 发送频率(每秒多少次)
      * @param t 话题名称
      */
-    explicit MindVision(string data_root, string t, int frequency = 10000) : Node("MindVision"), frequency(frequency), root(data_root) {
+    explicit MindVision(string t, int frequency = 10000, string data_root = "../../config/camera_calibration") : Node("MindVision"), frequency(frequency), root(data_root) {
         if (this->init() && this->start())
         {
             this->publish();
