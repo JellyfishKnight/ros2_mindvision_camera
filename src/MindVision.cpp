@@ -6,7 +6,7 @@
 
 using namespace std;
 using namespace cv;
-using namespace MindVision_Camera;
+using namespace mindvision_camera;
 
 bool MindVision::init() {
     //语言设置
@@ -120,22 +120,15 @@ void MindVision::pre_process() {
     Mat cameraMatrix;
     Mat distCoeff;
     this->filestorage = new FileStorage(this->root, FileStorage::READ);
-    try
-    {
         if (this->filestorage->isOpened()) {
             (*this->filestorage)["Intrinsic_Matrix_MV"] >> cameraMatrix;
             (*this->filestorage)["Distortion_Coefficients_MV"] >> distCoeff;
         } else {
-            RCLCPP_WARN(this->get_logger(), "Data read failed!");
+            RCLCPP_INFO(this->get_logger(), "Data read failed!");
         }
         Mat dist = src.clone();
         undistort(this->src, dist, cameraMatrix, distCoeff);
         src = dist.clone();
-    }
-    catch (std::exception error)
-    {
-        RCLCPP_WARN(this->get_logger(), "Pre-process failed!");
-    }
 }
 
 bool MindVision::img_convert() {
