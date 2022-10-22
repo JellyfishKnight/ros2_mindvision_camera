@@ -15,7 +15,7 @@ bool MindVision::init() {
     CameraEnumerateDevice(&CameraEnumList,&CameraCounts);
     if (CameraCounts == 0) {
         //函数返回值为0则表示枚举失败
-        cout << "Camera enumerate devices failed!" << endl;
+        RCLCPP_INFO(this->get_logger(), "Camera enumerate devices failed!");
         return false;
     }
     //检测是否有相机连接
@@ -25,7 +25,7 @@ bool MindVision::init() {
     //相机初始化
     if (CameraInit(&CameraEnumList, -1, -1, &hCamera) != CAMERA_STATUS_SUCCESS) {
     //初始化失败    
-        cout << "Camera init failed!" << endl;
+        RCLCPP_INFO(this->get_logger(),"Camera init failed!");
         return false;
     } else {
         //获得相机的特性描述结构体
@@ -101,7 +101,7 @@ void MindVision::publish() {
     while (rclcpp::ok()) {
         grab();
         if (src.empty()) {                  //判空
-            cout << "Grab failed!" << endl;
+            RCLCPP_INFO(this->get_logger(), "Grab failed!");
             return ;
         }
         if (img_convert()) {
