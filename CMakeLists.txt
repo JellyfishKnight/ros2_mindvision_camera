@@ -37,8 +37,7 @@ target_link_libraries(
   MVSDK
 )
 
-rclcpp_components_register_node(
-  ${PROJECT_NAME}
+rclcpp_components_register_nodes(${PROJECT_NAME}
   PLUGIN mindvision_camera::MindVision
   EXECUTABLE ${PROJECT_NAME}_node
 )
