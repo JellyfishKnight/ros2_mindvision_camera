@@ -8,11 +8,12 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "cv_bridge/cv_bridge.h"
-#include "ImgPublisher.h"
 
 using namespace std;
 
-class MindVision
+
+namespace MindVision_Camera {
+class MindVision : public rclcpp::Node
 {
 private:
     //相机句柄
@@ -35,11 +36,12 @@ private:
     Mat src;
     //话题名称
     string topic;
-    //发布器
-    ImgPublisher* imgPublisher = nullptr;
     //消息图像指针
-    sensor_msgs::msg::Image::SharedPtr msg;
-
+    sensor_msgs::msg::Image::SharedPtr image_msg;
+    // Publisher
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr ImgPublisher;
+    //Frequency
+    int frequency;
     /**
      * @brief 设置相机参数
      */
@@ -51,23 +53,6 @@ private:
      * @return false 转化失败
      */
     bool grab();
-
-
-public:
-    /**
-     * @brief 构造函数
-     * @param frequency 发送频率(每秒多少次)
-     * @param t 话题名称
-     */
-    explicit MindVision(string t, int frequency = 10000) : topic(move(t)) {
-        imgPublisher = new ImgPublisher(topic, frequency);
-    }
-    /**
-     * @brief 析构器
-     */
-    ~MindVision() {
-        delete imgPublisher;
-    }
     /**
      * @brief 初始化
      * 
@@ -93,6 +78,35 @@ public:
      * @brief 发布消息
      */
     void publish();
+    /**
+     * @brief convert cvImg to sensor_msgs::msg::Image
+     */
+    bool img_convert(Mat cvImg);
+public:
+    /**
+     * @brief 构造函数
+     * @param frequency 发送频率(每秒多少次)
+     * @param t 话题名称
+     */
+    explicit MindVision(string t, int frequency = 10000) : Node("MindVision"), frequency(frequency) {
+        if (this->init() && this->start())
+        {
+            this->publish();
+        }
+        else
+        {
+            RCLCPP_INFO(this->get_logger(), "Init failed or start failed!");
+        }
+        this->stop();
+    }
+    /**
+     * @brief 析构器
+     */
+    ~MindVision() {
+        
+    }
+    
 };
+}
 
 #endif

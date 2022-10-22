@@ -1,25 +1,30 @@
 cmake_minimum_required(VERSION 3.22.0)
 project(ros2_mindvision_camera)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_definitions(-Wall -Werror)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 find_package(ament_cmake_auto REQUIRED)
 
 ament_auto_find_build_dependencies()
 
-ament_auto_add_executable(
-  driver
-  src/driver.cpp
-  src/ImgPublisher.cpp
+ament_auto_add_library(
+  ${PROJECT_NAME} SHARED
   src/MindVision.cpp
   )
 
 target_include_directories(
-  driver PUBLIC
+  ${PROJECT_NAME} PUBLIC
   include/
   MindVisionSDK/include
 )
 
 target_link_directories(
-  driver PUBLIC
+  ${PROJECT_NAME} PUBLIC
   ${PROJECT_SOURCE_DIR}/MindVisionSDK/lib
 )
 install(
@@ -28,13 +33,29 @@ install(
 )
 
 target_link_libraries(
-  driver
+  ${PROJECT_NAME}
   MVSDK
 )
 
 rclcpp_components_register_node(
-  driver
-  
+  ${PROJECT_NAME}
+  PLUGIN MindVision_Camera::MindVision
+  EXECUTABLE ${PROJECT_NAME}_node
 )
 
-ament_auto_package()
+if(BUILD_TESTING) 
+  find_package(ament_lint_auto REQURIED
+  list(
+    APPEND AMENT_LINT_AUTO_EXCLUDE
+    ament_cmake_copyright
+    ament_cmake_cpplint
+    ament_cmake_uncrustify
+  )
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_auto_package(
+  INSTALL_TO_SHARE
+  config
+  launch
+)

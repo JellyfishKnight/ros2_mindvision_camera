@@ -5,6 +5,7 @@
 
 using namespace std;
 using namespace cv;
+using namespace MindVision_Camera;
 
 bool MindVision::init() {
     //语言设置
@@ -93,6 +94,8 @@ bool MindVision::grab() {
 }
 
 void MindVision::publish() {
+    //Init publisher
+    ImgPublisher = this->create_publisher<sensor_msgs::msg::Image>(topic, frequency);
     //发送器
     while (rclcpp::ok()) {
         grab();
@@ -100,6 +103,23 @@ void MindVision::publish() {
             cout << "Grab failed!" << endl;
             return ;
         }
-        imgPublisher->publish(src);
+        if (img_convert(this->src)) {
+            this->ImgPublisher->publish((*this->image_msg));
+            RCLCPP_INFO(this->get_logger(), "Publishing...");
+        }
+        else
+        {
+            RCLCPP_INFO(this->get_logger(), "Convert Failed!");
+            return;
+        }
+    }
+}
+
+bool MindVision::img_convert(Mat cvImg) {
+    this->image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", cvImg).toImageMsg();
+    if (this->image_msg = nullptr) {
+        return false;
+    } else {
+        return true;
     }
 }
