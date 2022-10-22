@@ -35,17 +35,20 @@ private:
     //cv图像
     Mat src;
     //话题名称
-    string topic;
+    string topic = "mindvision";
     //消息图像指针
     sensor_msgs::msg::Image::SharedPtr image_msg;
     // Publisher
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr ImgPublisher;
     //Frequency
-    int frequency;
+    int frequency = 10000;
     //root of data file
-    string root;
+    string root = "../../config/camera_calibration.xml";
     //Pointer of file read
     FileStorage *filestorage;
+    //driver thread
+    std::thread driver_thread;
+
     /**
      * @brief 设置相机参数
      */
@@ -97,10 +100,16 @@ public:
      * @param frequency 发送频率(每秒多少次)
      * @param t 话题名称
      */
-    explicit MindVision(string t, int frequency = 10000, string data_root = "../../config/camera_calibration") : Node("MindVision"), frequency(frequency), root(data_root) {
+    explicit MindVision(const rclcpp::NodeOptions &options):
+     Node("MindVision", options) {
         if (this->init() && this->start())
         {
-            this->publish();
+            driver_thread = std::thread{
+                [this]() -> void
+                {
+                    RCLCPP_INFO(this->get_logger(), "Publishing...");
+                    this->publish();
+                }};
         }
         else
         {

@@ -29,7 +29,7 @@ target_link_directories(
 )
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/MindVisionSDK/lib
-  DESTINATION lib
+  DESTINATION .
 )
 
 target_link_libraries(
@@ -37,7 +37,7 @@ target_link_libraries(
   MVSDK
 )
 
-rclcpp_components_register_nodes(${PROJECT_NAME}
+rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN mindvision_camera::MindVision
   EXECUTABLE ${PROJECT_NAME}_node
 )
