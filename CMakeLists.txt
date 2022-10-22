@@ -12,18 +12,29 @@ ament_auto_add_executable(
   src/MindVision.cpp
   )
 
+target_include_directories(
+  driver PUBLIC
+  include/
+  MindVisionSDK/include
+)
+
 target_link_directories(
   driver PUBLIC
-  ${PROJECT_SOURCE_DIR}/lib
+  ${PROJECT_SOURCE_DIR}/MindVisionSDK/lib
 )
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/lib
+  DIRECTORY ${PROJECT_SOURCE_DIR}/MindVisionSDK/lib
   DESTINATION lib
 )
 
 target_link_libraries(
   driver
   MVSDK
+)
+
+rclcpp_components_register_node(
+  driver
+  
 )
 
 ament_auto_package()
