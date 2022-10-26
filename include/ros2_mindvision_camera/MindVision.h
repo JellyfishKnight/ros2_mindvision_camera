@@ -43,7 +43,7 @@ private:
     //Frequency
     int frequency = 10000;
     //root of data file
-    string root = "../../config/camera_calibration.xml";
+    string root = "绝对路径";
     //Pointer of file read
     FileStorage *filestorage;
     //driver thread
