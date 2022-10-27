@@ -43,7 +43,7 @@ private:
     //Frequency
     int frequency = 10000;
     //root of data file
-    string root = "绝对路径";
+    string root = "./config/camera_calibration.xml 绝对路径";
     //Pointer of file read
     FileStorage *filestorage;
     //driver thread
@@ -102,20 +102,20 @@ public:
      */
     explicit MindVision(const rclcpp::NodeOptions &options):
      Node("MindVision", options) {
-        if (this->init() && this->start())
-        {
-            driver_thread = std::thread{
-                [this]() -> void
+        driver_thread = std::thread{
+            [this]() -> void
+            {
+                if (this->init() && this->start())
                 {
                     RCLCPP_INFO(this->get_logger(), "Publishing...");
                     this->publish();
-                }};
-        }
-        else
-        {
-            RCLCPP_INFO(this->get_logger(), "Init failed or start failed!");
-        }
-        this->stop();
+                }
+                else
+                {
+                    RCLCPP_INFO(this->get_logger(), "Init failed or start failed!");
+                }
+                this->stop();
+        }};
     }
     /**
      * @brief 析构器
