@@ -1,11 +1,20 @@
-from launch import LaunchDescription
-from launch_ros.actions import Node
+import launch
+from launch_ros.actions import ComposableNodeContainer
+from launch_ros.descriptions import ComposableNode
 
 def generate_launch_description():
-
-    return LaunchDescription([
-        Node(
-            package='mindvision_camera',
-            executable='mindvision_camera_node',
-        )
-    ])
+    container = ComposableNodeContainer(
+        name='Container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                package='mindvision_camera',
+                plugin='mindvision_camera::MindVision',
+                name=''
+            )
+        ],
+        output='screen'
+    )
+    return launch.LaunchDescription([container])

@@ -12,10 +12,11 @@
 
 using namespace cv;
 using namespace std;
-using namespace rclcpp;
+using namespace std::chrono_literals;
 
 
-namespace mindvision_camera {
+namespace mindvision_camera 
+{
 class MindVision : public rclcpp::Node {
 private:
     int                     hCamera;
@@ -36,6 +37,8 @@ private:
 
     sensor_msgs::msg::Image::SharedPtr sensor_image_ptr;
 
+    rclcpp::TimerBase::SharedPtr timer;
+
     bool InitCam();
 
     bool SetCam();
@@ -44,10 +47,13 @@ private:
         
     bool StopGrab();
 
-    bool ImageConvert();
+    bool ImageConvert(Mat& src);
+
+    void call_back();
 
 public:
-    MindVision(rclcpp::NodeOptions& options) : Node("MindVision", options) {
+    __attribute__ ((visibility("default")));
+    MindVision(const rclcpp::NodeOptions& options) : Node("MindVision", options) {
         if (!InitCam()) {
             RCLCPP_INFO(this->get_logger(), "Init Camera Failed!");
         } else {
@@ -57,31 +63,21 @@ public:
                 if (!StartGrab()) {
                     RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
                 } else {
-                    this->pub = rclcpp::create_publisher<sensor_msgs::msg::Image>("sensor_image", 100);
-                    Mat src;
-                    while (rclcpp::ok()) {
-                        if (CameraGetImageBuffer(hCamera, &sFrameInfo, &pbyBuffer, 1000) == CAMERA_STATUS_SUCCESS) {
-                            CameraImageProcess(hCamera, pbyBuffer, g_pRgbBuffer, &sFrameInfo);
-                            /// it takes almost 99.7% of the whole produce time !
-                            src = cv::Mat(
-                                    cvSize(sFrameInfo.iWidth, sFrameInfo.iHeight),
-                                    sFrameInfo.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
-                                    g_pRgbBuffer
-                            );
-                            ImageConvert(src);
-                            CameraReleaseImageBuffer(hCamera, pbyBuffer);
-                        else {
-                            RCLCPP_INFO(this->get_logger(), "Grab Failed!");
-                        }
-                    }
+                    this->pub = rclcpp::create_publisher<sensor_msgs::msg::Image>(this, "sensor_image", 1000);
+                    this->timer = this->create_wall_timer(1ms, std::bind(&MindVision::call_back, this));                    
                 }
             }
         }
 
     }
+    ~MindVision() = default;
+};
 
-    ~MindVision();
-};
-};
+}
+
+#include "rclcpp_components/register_node_macro.hpp"
+
+RCLCPP_COMPONENTS_REGISTER_NODE(mindvision_camera::MindVision);
+
 
 #endif

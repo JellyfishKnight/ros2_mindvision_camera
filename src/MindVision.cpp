@@ -1,4 +1,10 @@
 #include "MindVision.h"
+#include <rclcpp/rclcpp.hpp>
+#include <cv_bridge/cv_bridge.h>
+
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 using namespace std;
 using namespace cv;
@@ -10,7 +16,6 @@ bool MindVision::InitCam() {
     //枚举设备，并建立设备列表
     iStatus = CameraEnumerateDevice(&tCameraEnumList, &iCameraCounts);
     printf("state = %d\n", iStatus);
-
     printf("count = %d\n", iCameraCounts);
     //没有连接设备
     if (iCameraCounts == 0) {
@@ -32,11 +37,8 @@ bool MindVision::InitCam() {
                 tCapability.sResolutionRange.iHeightMax * tCapability.sResolutionRange.iWidthMax * 3);
         //设置相机的相关参数
         SetCam();
-        // 触发方式
-
         // 设置为彩色
         CameraSetIspOutFormat(hCamera, CAMERA_MEDIA_TYPE_BGR8);
-
         return true;
     }
 }
@@ -50,16 +52,9 @@ bool MindVision::SetCam() {
     CameraGetGain(hCamera, &r_gain, &g_gain, &b_gain);
     CameraSetGain(hCamera, r_gain + 40, g_gain + 20, b_gain);
 
-    if (carName == SENTRYTOP) { // 134
-        CameraSetExposureTime(hCamera, 1250); //设置曝光时间
-        CameraSetAnalogGainX(hCamera, 3.5); //设置增益系数
-    } else if (carName == SENTRYDOWN) { // 133
-        CameraSetExposureTime(hCamera, 1000); //设置曝光时间
-        CameraSetAnalogGainX(hCamera, 2.5); //设置增益系数
-    } else { // 133
-        CameraSetExposureTime(hCamera, 1500); //设置曝光时间
-        CameraSetAnalogGainX(hCamera, 2.5); //设置增益系数
-    }
+    //MV-SUV134 Camera
+    CameraSetExposureTime(hCamera, 1250); //设置曝光时间
+    CameraSetAnalogGainX(hCamera, 3.5); //设置增益系数
 
     /* 让SDK进入工作模式，开始接收来自相机发送的图像
         数据。如果当前相机是触发模式，则需要接收到
@@ -84,9 +79,37 @@ bool MindVision::ImageConvert(Mat& src) {
         RCLCPP_INFO(this->get_logger(), "Src image is empty!");
         return false;
     } else {
-        msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", src).toImageMsg();
-        
+        sensor_image_ptr = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", src).toImageMsg();
+        if (sensor_image_ptr == nullptr) {
+            RCLCPP_INFO(this->get_logger(), "Convert Failed!");
+            return false;
+        }
+        return true;
     }
 }
 
+void MindVision::call_back() {
+    Mat src;
+    while (rclcpp::ok()) {
+        if (CameraGetImageBuffer(hCamera, &sFrameInfo, &pbyBuffer, 1000) == CAMERA_STATUS_SUCCESS) {
+            CameraImageProcess(hCamera, pbyBuffer, g_pRgbBuffer, &sFrameInfo);
+            /// it takes almost 99.7% of the whole produce time !
+            src = cv::Mat(
+                    cvSize(sFrameInfo.iWidth, sFrameInfo.iHeight),
+                    sFrameInfo.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+                    g_pRgbBuffer
+            );
+            bool judger = ImageConvert(src);
+            if (!judger) {
+                RCLCPP_INFO(this->get_logger(), "Image Convert Failed!");
+            } else {
+                RCLCPP_INFO(this->get_logger(), "Publishing...");
+                pub->publish((*sensor_image_ptr));
+                CameraReleaseImageBuffer(hCamera, pbyBuffer);
+            }
+        } else {
+            RCLCPP_INFO(this->get_logger(), "Grab Failed!");
+        }
+    }
+}
 }

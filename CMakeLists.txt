@@ -19,7 +19,7 @@ ament_auto_add_library(
 
 target_include_directories(
   ${PROJECT_NAME} PUBLIC
-  include/
+  include/ros2_mindvision_camera/
   MindVisionSDK/include
 )
 
