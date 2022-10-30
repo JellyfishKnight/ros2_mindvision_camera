@@ -1,130 +1,87 @@
-#ifndef MINDVISION
-#define MINDVISION
+#ifndef MINDVISION_H
+#define MINDVISION_H
 
+#include <CameraApi.h>
 
-#include "rclcpp/rclcpp.hpp"
-#include "CameraApi.h"
-#include "opencv2/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "cv_bridge/cv_bridge.h"
+#include <rclcpp/rclcpp.hpp>
+#include <cv_bridge/cv_bridge.h>
 
-using namespace std;
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
+
 using namespace cv;
+using namespace std;
+using namespace rclcpp;
+
 
 namespace mindvision_camera {
-class MindVision : public rclcpp::Node
-{
+class MindVision : public rclcpp::Node {
 private:
-    //相机句柄
-    int hCamera{};
-    //相机数量
-    int CameraCounts = 4;
-    //相机枚举列表
-    tSdkCameraDevInfo CameraEnumList{};
-    //设备描述信息
-    tSdkCameraCapbility Capability{};
-    tSdkFrameHead FrameInfo{};
-    BYTE* pbyBuffer{};
-    int iDisplayFrames = 10000;
-    IplImage* ilpImage = nullptr;
-    double* pfLineTime{};
-    int channel = 3;
-    //处理后数据缓存区
-    unsigned char* g_pRgBuffer{};
-    //cv图像
-    Mat src;
-    //话题名称
-    string topic = "mindvision";
-    //消息图像指针
-    sensor_msgs::msg::Image::SharedPtr image_msg;
-    // Publisher
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr ImgPublisher;
-    //Frequency
-    int frequency = 10000;
-    //root of data file
-    string root = "./config/camera_calibration.xml 绝对路径";
-    //Pointer of file read
-    FileStorage *filestorage;
-    //driver thread
-    std::thread driver_thread;
+    int                     hCamera;
+    int                     iCameraCounts = 1;
+    int                     iStatus=-1;
+    int                     fps;
+    tSdkCameraDevInfo       tCameraEnumList;
+    tSdkCameraCapbility     tCapability;      //设备描述信息
+    tSdkFrameHead           sFrameInfo;
+    BYTE*			        pbyBuffer;
+    int                     iDisplayFrames = 10000;
+    IplImage                *iplImage = NULL;
+    double*                 pfLineTime;
+    int                     channel = 3;
+    unsigned char           * g_pRgbBuffer;     //处理后数据缓存区
 
-    /**
-     * @brief 设置相机参数
-     */
-    void setCameraData();
-    /**
-     * @brief 将相机的数据转化为Mat
-     *
-     * @return true 转化成功
-     * @return false 转化失败
-     */
-    bool grab();
-    /**
-     * @brief 初始化
-     * 
-     * @return true 初始化成功
-     * @return false 初始化失败
-     */
-    bool init();
-    /**
-     * @brief 启动相机
-     * 
-     * @return true 启动成功
-     * @return false 启动失败
-     */
-    bool start();
-    /**
-     * @brief 关闭相机
-     * 
-     * @return true 关闭成功
-     * @return false 关闭失败
-     */
-    bool stop();
-    /**
-     * @brief 发布消息
-     */
-    void publish();
-    /**
-     * @brief convert cvImg to sensor_msgs::msg::Image
-     */
-    bool img_convert();
-    /**
-     * @brief undisort the cv image
-    */
-    void pre_process();
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub;
+
+    sensor_msgs::msg::Image::SharedPtr sensor_image_ptr;
+
+    bool InitCam();
+
+    bool SetCam();
+    
+    bool StartGrab();
+        
+    bool StopGrab();
+
+    bool ImageConvert();
 
 public:
-    /**
-     * @brief 构造函数
-     * @param frequency 发送频率(每秒多少次)
-     * @param t 话题名称
-     */
-    explicit MindVision(const rclcpp::NodeOptions &options):
-     Node("MindVision", options) {
-        driver_thread = std::thread{
-            [this]() -> void
-            {
-                if (this->init() && this->start())
-                {
-                    RCLCPP_INFO(this->get_logger(), "Publishing...");
-                    this->publish();
+    MindVision(rclcpp::NodeOptions& options) : Node("MindVision", options) {
+        if (!InitCam()) {
+            RCLCPP_INFO(this->get_logger(), "Init Camera Failed!");
+        } else {
+            if (!SetCam()) {
+                RCLCPP_INFO(this->get_logger(), "Set Camera Failed!");
+            } else {
+                if (!StartGrab()) {
+                    RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
+                } else {
+                    this->pub = rclcpp::create_publisher<sensor_msgs::msg::Image>("sensor_image", 100);
+                    Mat src;
+                    while (rclcpp::ok()) {
+                        if (CameraGetImageBuffer(hCamera, &sFrameInfo, &pbyBuffer, 1000) == CAMERA_STATUS_SUCCESS) {
+                            CameraImageProcess(hCamera, pbyBuffer, g_pRgbBuffer, &sFrameInfo);
+                            /// it takes almost 99.7% of the whole produce time !
+                            src = cv::Mat(
+                                    cvSize(sFrameInfo.iWidth, sFrameInfo.iHeight),
+                                    sFrameInfo.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+                                    g_pRgbBuffer
+                            );
+                            ImageConvert(src);
+                            CameraReleaseImageBuffer(hCamera, pbyBuffer);
+                        else {
+                            RCLCPP_INFO(this->get_logger(), "Grab Failed!");
+                        }
+                    }
                 }
-                else
-                {
-                    RCLCPP_INFO(this->get_logger(), "Init failed or start failed!");
-                }
-                this->stop();
-        }};
-    }
-    /**
-     * @brief 析构器
-     */
-    ~MindVision() {
-        delete filestorage;
+            }
+        }
 
     }
+
+    ~MindVision();
 };
-}
+};
 
 #endif
