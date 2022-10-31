@@ -88,7 +88,10 @@ bool MindVision::ReadData() {
 
 void MindVision::Undistort(Mat& src) {
     Mat dst = src.clone();
+            RCLCPP_WARN(this->get_logger(), "Check");
+
     undistort(src, dst, cameraMatrix, distCoeffs);
+
     src = dst.clone();
 }
 

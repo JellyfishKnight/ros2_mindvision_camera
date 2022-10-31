@@ -35,7 +35,7 @@ private:
     sensor_msgs::msg::Image::SharedPtr sensor_image_ptr;
     rclcpp::TimerBase::SharedPtr timer;
     FileStorage*            fileStorage;
-    string                  root_of_file = "package://mindvision_camera/config/camera_calibration.xml";
+    string                  root_of_file = "/home/wjy/Projects/RM/CameraDriver_WS/src/ros2_mindvision_camera/config/camera_calibration.xml";
     Mat                     cameraMatrix;
     Mat                     distCoeffs;
 
