@@ -87,10 +87,13 @@ bool MindVision::ReadData() {
     }
 }
 
-Mat MindVision::Undistort(Mat src) {
-    Mat dst = src.clone();
-    undistort(src, dst, cameraMatrix, distCoeffs);
-    return dst;
+void MindVision::Undistort(Mat& src) {
+    Mat dst;
+    Mat map1, map2;
+    Mat newCameraMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, src.size(), 0, src.size());
+    initUndistortRectifyMap(cameraMatrix, distCoeffs, cv::Mat(), newCameraMatrix, src.size(), CV_16SC2, map1, map2);
+    remap(src, dst, map1, map2, cv::INTER_LINEAR);
+    src = dst.clone();
 }
 
 bool MindVision::ImageConvert(Mat& src) {
@@ -118,7 +121,7 @@ void MindVision::call_back() {
                     sFrameInfo.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
                     g_pRgbBuffer
             );
-            src = Undistort(src);
+            Undistort(src);
             if (!ImageConvert(src)) {
                 RCLCPP_INFO(this->get_logger(), "Image Convert Failed!");
             } else {
