@@ -5,7 +5,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <cv_bridge/cv_bridge.h>
-
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -36,9 +35,10 @@ private:
     sensor_msgs::msg::Image::SharedPtr sensor_image_ptr;
     rclcpp::TimerBase::SharedPtr timer;
     FileStorage*            fileStorage;
-    string                  root_of_file;
+    string                  root_of_file = "package://mindvision_camera/config/camera_calibration.xml";
     Mat                     cameraMatrix;
     Mat                     distCoeffs;
+
 
 
     bool InitCam();
