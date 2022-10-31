@@ -51,7 +51,7 @@ private:
 
     bool ReadData();
 
-    void Undistort(Mat& src);
+    Mat Undistort(Mat src);
 
     bool ImageConvert(Mat& src);
 

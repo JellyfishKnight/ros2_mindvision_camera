@@ -5,6 +5,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 
 using namespace std;
@@ -86,13 +87,10 @@ bool MindVision::ReadData() {
     }
 }
 
-void MindVision::Undistort(Mat& src) {
+Mat MindVision::Undistort(Mat src) {
     Mat dst = src.clone();
-            RCLCPP_WARN(this->get_logger(), "Check");
-
     undistort(src, dst, cameraMatrix, distCoeffs);
-
-    src = dst.clone();
+    return dst;
 }
 
 bool MindVision::ImageConvert(Mat& src) {
@@ -120,7 +118,7 @@ void MindVision::call_back() {
                     sFrameInfo.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
                     g_pRgbBuffer
             );
-            Undistort(src);
+            src = Undistort(src);
             if (!ImageConvert(src)) {
                 RCLCPP_INFO(this->get_logger(), "Image Convert Failed!");
             } else {
