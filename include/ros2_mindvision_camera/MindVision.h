@@ -32,12 +32,14 @@ private:
     double*                 pfLineTime;
     int                     channel = 3;
     unsigned char           * g_pRgbBuffer;     //处理后数据缓存区
-
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub;
-
     sensor_msgs::msg::Image::SharedPtr sensor_image_ptr;
-
     rclcpp::TimerBase::SharedPtr timer;
+    FileStorage*            fileStorage;
+    string                  root_of_file;
+    Mat                     cameraMatrix;
+    Mat                     distCoeffs;
+
 
     bool InitCam();
 
@@ -47,6 +49,10 @@ private:
         
     bool StopGrab();
 
+    bool ReadData();
+
+    void Undistort(Mat& src);
+
     bool ImageConvert(Mat& src);
 
     void call_back();
@@ -54,6 +60,9 @@ private:
 public:
     __attribute__ ((visibility("default")));
     MindVision(const rclcpp::NodeOptions& options) : Node("MindVision", options) {
+        if (!ReadData()) {
+            RCLCPP_INFO(this->get_logger(), "Data Read Failed! Image is distorted!");
+        }
         if (!InitCam()) {
             RCLCPP_INFO(this->get_logger(), "Init Camera Failed!");
         } else {

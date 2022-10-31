@@ -5,6 +5,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/calib3d.hpp>
 
 using namespace std;
 using namespace cv;
@@ -74,6 +75,23 @@ bool MindVision::StopGrab() {
     return false;
 }
 
+bool MindVision::ReadData() {
+    fileStorage = new FileStorage(root_of_file, FileStorage::READ);
+    if (fileStorage->isOpened()) {
+        (*fileStorage)["Intrinsic_Matrix_MV"] >> cameraMatrix;
+        (*fileStorage)["Distortion_Coefficients_MV"] >> distCoeffs;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void MindVision::Undistort(Mat& src) {
+    Mat dst = src.clone();
+    undistort(src, dst, cameraMatrix, distCoeffs);
+    src = dst.clone();
+}
+
 bool MindVision::ImageConvert(Mat& src) {
     if (src.empty()) {
         RCLCPP_INFO(this->get_logger(), "Src image is empty!");
@@ -99,8 +117,8 @@ void MindVision::call_back() {
                     sFrameInfo.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
                     g_pRgbBuffer
             );
-            bool judger = ImageConvert(src);
-            if (!judger) {
+            Undistort(src);
+            if (!ImageConvert(src)) {
                 RCLCPP_INFO(this->get_logger(), "Image Convert Failed!");
             } else {
                 RCLCPP_INFO(this->get_logger(), "Publishing...");
@@ -112,4 +130,6 @@ void MindVision::call_back() {
         }
     }
 }
+
+
 }
