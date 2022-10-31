@@ -126,6 +126,9 @@ void MindVision::call_back() {
                 RCLCPP_INFO(this->get_logger(), "Image Convert Failed!");
             } else {
                 RCLCPP_INFO(this->get_logger(), "Publishing...");
+                // namedWindow("demo", WINDOW_FULLSCREEN);
+                // imshow("demo", src);
+                // waitKey(1);
                 pub->publish((*sensor_image_ptr));
                 CameraReleaseImageBuffer(hCamera, pbyBuffer);
             }
