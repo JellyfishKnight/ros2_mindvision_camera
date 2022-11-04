@@ -10,3 +10,7 @@ A ROS2 package for mindvision industrial camera
 <hr>
 
 > ros2 launch mindvision_camera mindvision_camera.launch.py
+
+# Topic Name
+
+> sensor_image
