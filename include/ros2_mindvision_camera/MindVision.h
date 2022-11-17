@@ -1,10 +1,13 @@
 #ifndef MINDVISION_H
 #define MINDVISION_H
 
+//camera driver
 #include <CameraApi.h>
-
+//ros2
 #include <rclcpp/rclcpp.hpp>
 #include <cv_bridge/cv_bridge.h>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+//opencv
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -35,7 +38,7 @@ private:
     sensor_msgs::msg::Image::SharedPtr sensor_image_ptr;
     rclcpp::TimerBase::SharedPtr timer;
     FileStorage*            fileStorage;
-    string                  root_of_file = "/home/wjy/Projects/RM/CameraDriver_WS/src/ros2_mindvision_camera/config/camera_calibration.xml";
+    string                  root_of_file = ament_index_cpp::get_package_share_directory("mindvision_camera") + "/config/camera_calibration.xml";
     Mat                     cameraMatrix;
     Mat                     distCoeffs;
 
