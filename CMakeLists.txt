@@ -4,11 +4,12 @@ project(mindvision_camera)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_definitions(-Wall -Werror)
+# add_definitions(-Wall -Werror)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
+find_package(Ceres CONFIG REQUIRED)
 
 ament_auto_find_build_dependencies()
 
@@ -34,12 +35,13 @@ install(
 
 target_link_libraries(
   ${PROJECT_NAME}
+  ceres Ceres::ceres
   MVSDK
   ${OpenCV_LIBS}
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN mindvision_camera::MindVision
+  PLUGIN Helios::MindVision
   EXECUTABLE ${PROJECT_NAME}_node
 )
 

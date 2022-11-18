@@ -12,7 +12,7 @@ def generate_launch_description():
         composable_node_descriptions=[
             ComposableNode(
                 package='mindvision_camera',
-                plugin='mindvision_camera::MindVision',
+                plugin='Helios::MindVision',
                 name=''
             )
         ],
