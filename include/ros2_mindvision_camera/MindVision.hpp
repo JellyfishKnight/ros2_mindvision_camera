@@ -83,8 +83,8 @@ namespace Helios {
                     if (!StartGrab()) {
                         RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
                     } else {
-                        this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "mindvision_camera_node", 10);
-                        this->subscriber = this->create_subscription<rm_interfaces::msg::ReceiveData>("ReceiveTask_node", 10, std::bind(
+                        this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "ProduceTask_node", 1);
+                        this->subscriber = this->create_subscription<rm_interfaces::msg::ReceiveData>("ReceiveTask_node", 1, std::bind(
                             &MindVision::call_back, this, _1
                         ));
                     }
