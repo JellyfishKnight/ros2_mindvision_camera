@@ -1,5 +1,4 @@
 import launch
-import os
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 

@@ -4,8 +4,6 @@ project(mindvision_camera)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# add_definitions(-Wall -Werror)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
@@ -15,7 +13,7 @@ ament_auto_find_build_dependencies()
 
 ament_auto_add_library(
   ${PROJECT_NAME} SHARED
-  src/MindVision.cpp
+  DIRECTORY src
   )
 
 target_include_directories(
@@ -33,7 +31,7 @@ install(
   DESTINATION .
 )
 
-target_link_libraries(
+target_link_libraries( 
   ${PROJECT_NAME}
   ceres Ceres::ceres
   MVSDK

@@ -1,4 +1,4 @@
-#include "MindVision.h"
+#include "MindVision.hpp"
 
 using namespace std;
 using namespace cv;
@@ -113,16 +113,17 @@ namespace Helios {
             RCLCPP_INFO(this->get_logger(), "Src image is empty!");
             return false;
         } else {
-            sensor_image_ptr = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", src).toImageMsg();
-            if (sensor_image_ptr == nullptr) {
+            sensor_msgs::msg::Image::SharedPtr tempPtr = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", src).toImageMsg();
+            if (tempPtr == nullptr) {
                 RCLCPP_INFO(this->get_logger(), "Convert Failed!");
                 return false;
             }
+            timeStampMatMsg.frame = (*tempPtr);
             return true;
         }
     }
 
-    void MindVision::call_back() {
+    void MindVision::call_back(rm_interfaces::msg::ReceiveData::SharedPtr receiveMsgPtr) {
         while (rclcpp::ok()) {
             double st = (double) getTickCount();
             serials::ReceiveData rd;
@@ -146,9 +147,11 @@ namespace Helios {
             } else {
                 time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
                 saveMission = true;
-            }
+            }                
             ImageConvert();
-            pub->publish((*sensor_image_ptr));
+            timeStampMatMsg.receive_data = (*receiveMsgPtr);
+            timeStampMatMsg.stamp = time_stamp;
+            pub->publish(timeStampMatMsg);
             // put new frame which grab from camera in Fifo
             rm_tools::timeStampMat temp(frame,time_stamp,rd);
             frame_fifo.push(temp);
@@ -161,6 +164,4 @@ namespace Helios {
             }
         }
     }
-
-
 }

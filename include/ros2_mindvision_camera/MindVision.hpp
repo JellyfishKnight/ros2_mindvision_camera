@@ -13,8 +13,10 @@
 #include <opencv2/imgcodecs.hpp>
 //self defined
 #include "cv_params/Defines.hpp"
+#include "rm_interfaces/msg/time_stamp_mat.hpp"
 #include "task_shared_params/TaskParams.hpp"
 #include "serials/SerialAccessories.hpp"
+#include "rm_tools/FIFO.hpp"
 
 using namespace cv;
 using namespace std;
@@ -37,9 +39,9 @@ namespace Helios {
         double*                 pfLineTime;
         int                     channel = 3;
         unsigned char           * g_pRgbBuffer;     //处理后数据缓存区
-        rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub;
-        sensor_msgs::msg::Image::SharedPtr sensor_image_ptr;
-        rclcpp::TimerBase::SharedPtr timer;
+        rclcpp::Publisher<rm_interfaces::msg::TimeStampMat>::SharedPtr pub;
+        rclcpp::Subscription<rm_interfaces::msg::ReceiveData>::SharedPtr subscriber;
+        rm_interfaces::msg::TimeStampMat timeStampMatMsg;
         FileStorage*            fileStorage;
         string                  root_of_file = ament_index_cpp::get_package_share_directory("mindvision_camera") + "/config/camera_calibration.xml";
         Mat                     cameraMatrix;
@@ -64,7 +66,7 @@ namespace Helios {
 
         bool ImageConvert();
 
-        void call_back();
+        void call_back(rm_interfaces::msg::ReceiveData::SharedPtr receiveMsgPtr);
 
     public:
         __attribute__ ((visibility("default")));
@@ -81,12 +83,13 @@ namespace Helios {
                     if (!StartGrab()) {
                         RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
                     } else {
-                        this->pub = rclcpp::create_publisher<sensor_msgs::msg::Image>(this, "sensor_image", 1000);
-                        this->timer = this->create_wall_timer(1ms, std::bind(&MindVision::call_back, this));                    
+                        this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "mindvision_camera_node", 10);
+                        this->subscriber = this->create_subscription<rm_interfaces::msg::ReceiveData>("ReceiveTask_node", 10, std::bind(
+                            &MindVision::call_back, this, _1
+                        ));
                     }
                 }
             }
-
         }
         ~MindVision() = default;
     };
