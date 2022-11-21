@@ -16,7 +16,6 @@
 #include "rm_interfaces/msg/time_stamp_mat.hpp"
 #include "task_shared_params/TaskParams.hpp"
 #include "serials/SerialAccessories.hpp"
-#include "rm_tools/FIFO.hpp"
 
 using namespace cv;
 using namespace std;

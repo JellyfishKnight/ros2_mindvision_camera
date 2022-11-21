@@ -126,10 +126,6 @@ namespace Helios {
     void MindVision::call_back(rm_interfaces::msg::ReceiveData::SharedPtr receiveMsgPtr) {
         while (rclcpp::ok()) {
             double st = (double) getTickCount();
-            serials::ReceiveData rd;
-            if (com_flag) {
-                rd = receive_fifo.wait_and_pop();
-            }
             receive_pop_time = rm_tools::CalWasteTime(st, freq);
             double st1 = (double) getTickCount();
             /*ignore frame height and width temperantly*/
@@ -152,9 +148,6 @@ namespace Helios {
             timeStampMatMsg.receive_data = (*receiveMsgPtr);
             timeStampMatMsg.stamp = time_stamp;
             pub->publish(timeStampMatMsg);
-            // put new frame which grab from camera in Fifo
-            rm_tools::timeStampMat temp(frame,time_stamp,rd);
-            frame_fifo.push(temp);
             produceTime = rm_tools::CalWasteTime(st1, freq);
             // 读取视频空格暂停
             if (carName == VIDEO) {
