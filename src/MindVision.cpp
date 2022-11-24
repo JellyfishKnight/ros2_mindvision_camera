@@ -144,6 +144,8 @@ namespace Helios {
                 time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
                 saveMission = true;
             }                
+            FRAMEHEIGHT = src.rows;
+            FRAMEWIDTH = src.cols;
             ImageConvert();
             timeStampMatMsg.receive_data = (*receiveMsgPtr);
             timeStampMatMsg.stamp = time_stamp;

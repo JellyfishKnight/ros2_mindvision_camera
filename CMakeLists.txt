@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake_auto REQUIRED)
 find_package(Ceres CONFIG REQUIRED)
+find_package(OpenCV 4 REQUIRED)
 
 ament_auto_find_build_dependencies()
 
@@ -36,7 +37,7 @@ target_link_libraries(
   ceres Ceres::ceres
   MVSDK
   ${OpenCV_LIBS}
-)
+  )
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN Helios::MindVision
