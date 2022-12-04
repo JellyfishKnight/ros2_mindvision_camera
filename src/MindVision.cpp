@@ -73,7 +73,7 @@ namespace Helios {
                 sFrameInfo.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
                 g_pRgbBuffer
         );
-        Undistort();
+        // Undistort();
         //cout << "convert to cv mat: " << RMTools::CalWasteTime(st_,getTickFrequency()) << endl;
         CameraReleaseImageBuffer(hCamera, pbyBuffer);
         return true;
@@ -143,7 +143,7 @@ namespace Helios {
             } else {
                 time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
                 saveMission = true;
-            }                
+            }
             FRAMEHEIGHT = src.rows;
             FRAMEWIDTH = src.cols;
             ImageConvert();
