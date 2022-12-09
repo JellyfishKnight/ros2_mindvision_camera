@@ -88,26 +88,6 @@ namespace Helios {
         return false;
     }
 
-    bool MindVision::ReadData() {
-        fileStorage = new FileStorage(root_of_file, FileStorage::READ);
-        if (fileStorage->isOpened()) {
-            (*fileStorage)["Intrinsic_Matrix_MV"] >> cameraMatrix;
-            (*fileStorage)["Distortion_Coefficients_MV"] >> distCoeffs;
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    void MindVision::Undistort() {
-        Mat dst;
-        Mat map1, map2;
-        Mat newCameraMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, src.size(), 0, src.size());
-        initUndistortRectifyMap(cameraMatrix, distCoeffs, cv::Mat(), newCameraMatrix, src.size(), CV_16SC2, map1, map2);
-        remap(src, dst, map1, map2, cv::INTER_LINEAR);
-        src = dst.clone();
-    }
-
     bool MindVision::ImageConvert() {
         if (src.empty()) {
             RCLCPP_INFO(this->get_logger(), "Src image is empty!");
@@ -158,5 +138,126 @@ namespace Helios {
                 }
             }
         }
+    }
+
+    rcl_interfaces::msg::SetParametersResult MindVision::parametersCallBack(const std::vector<rclcpp::Parameter> & parameters) {
+        rcl_interfaces::msg::SetParametersResult result;
+        result.successful = true;
+        for (auto &param : parameters) {
+        if (param.get_name() == "exposure_time") {
+            int status = CameraSetExposureTime(hCamera, param.as_int());
+            if (status != CAMERA_STATUS_SUCCESS) {
+                result.successful = false;
+                result.reason = "Failed to set exposure time, status = " + std::to_string(status);
+            }
+        } else if (param.get_name() == "analog_gain") {
+            int status = CameraSetAnalogGain(hCamera, param.as_int());
+            if (status != CAMERA_STATUS_SUCCESS) {
+                result.successful = false;
+                result.reason = "Failed to set analog gain, status = " + std::to_string(status);
+            }
+        } else if (param.get_name() == "rgb_gain.r") {
+            r_gain_ = param.as_int();
+            int status = CameraSetGain(hCamera, r_gain_, g_gain_, b_gain_);
+            if (status != CAMERA_STATUS_SUCCESS) {
+                result.successful = false;
+                result.reason = "Failed to set RGB gain, status = " + std::to_string(status);
+            }
+        } else if (param.get_name() == "rgb_gain.g") {
+            g_gain_ = param.as_int();
+            int status = CameraSetGain(hCamera, r_gain_, g_gain_, b_gain_);
+            if (status != CAMERA_STATUS_SUCCESS) {
+                result.successful = false;
+                result.reason = "Failed to set RGB gain, status = " + std::to_string(status);
+            }
+        } else if (param.get_name() == "rgb_gain.b") {
+            b_gain_ = param.as_int();
+            int status = CameraSetGain(hCamera, r_gain_, g_gain_, b_gain_);
+            if (status != CAMERA_STATUS_SUCCESS) {
+                result.successful = false;
+                result.reason = "Failed to set RGB gain, status = " + std::to_string(status);
+            }
+        } else if (param.get_name() == "saturation") {
+            int status = CameraSetSaturation(hCamera, param.as_int());
+            if (status != CAMERA_STATUS_SUCCESS) {
+                result.successful = false;
+                result.reason = "Failed to set saturation, status = " + std::to_string(status);
+            }
+        } else if (param.get_name() == "gamma") {
+            int gamma = param.as_int();
+            int status = CameraSetGamma(hCamera, gamma);
+            if (status != CAMERA_STATUS_SUCCESS) {
+                result.successful = false;
+                result.reason = "Failed to set Gamma, status = " + std::to_string(status);
+            }
+        } else {
+            result.successful = false;
+            result.reason = "Unknown parameter: " + param.get_name();
+        }
+        }
+        return result;
+    }
+
+    void MindVision::declareParameters() {
+        rcl_interfaces::msg::ParameterDescriptor param_description;
+        param_description.integer_range.resize(1);
+        param_description.integer_range[0].step = 1;
+        double exposure_line_time;
+        //设置曝光时间
+        CameraGetExposureLineTime(hCamera, &exposure_line_time);
+        param_description.integer_range[0].from_value = tCapability.sExposeDesc.uiExposeTimeMin * exposure_line_time;
+        param_description.integer_range[0].to_value = tCapability.sExposeDesc.uiExposeTimeMax * exposure_line_time;
+        double exposure_time = this->declare_parameter("exposure_time", 1250, param_description);
+        CameraSetExposureTime(hCamera, exposure_time);
+        RCLCPP_INFO(this->get_logger(), "Exposure time = %f", exposure_time);
+        //Analog Gain And Set
+        param_description.description = "Analog gain";
+        param_description.integer_range[0].from_value = tCapability.sExposeDesc.uiAnalogGainMin;
+        param_description.integer_range[0].to_value = tCapability.sExposeDesc.uiAnalogGainMax;
+        int analog_gain;
+        CameraGetAnalogGain(hCamera, &analog_gain);
+        analog_gain = this->declare_parameter("analog_gain", analog_gain, param_description);
+        CameraSetAnalogGain(hCamera, analog_gain);
+        RCLCPP_INFO(this->get_logger(), "Analog gain = %d", analog_gain);
+        
+        // RGB Gain And Set
+        // Get default value
+        CameraGetGain(hCamera, &r_gain_, &g_gain_, &b_gain_);
+        // R Gain
+        param_description.integer_range[0].from_value = tCapability.sRgbGainRange.iRGainMin;
+        param_description.integer_range[0].to_value = tCapability.sRgbGainRange.iRGainMax;
+        r_gain_ = this->declare_parameter("rgb_gain.r", r_gain_, param_description);
+        // G Gain
+        param_description.integer_range[0].from_value = tCapability.sRgbGainRange.iGGainMin;
+        param_description.integer_range[0].to_value = tCapability.sRgbGainRange.iGGainMax;
+        g_gain_ = this->declare_parameter("rgb_gain.g", g_gain_, param_description);
+        // B Gain
+        param_description.integer_range[0].from_value = tCapability.sRgbGainRange.iBGainMin;
+        param_description.integer_range[0].to_value = tCapability.sRgbGainRange.iBGainMax;
+        b_gain_ = this->declare_parameter("rgb_gain.b", b_gain_, param_description);
+        // Set gain
+        CameraSetGain(hCamera, r_gain_, g_gain_, b_gain_);
+        RCLCPP_INFO(this->get_logger(), "RGB Gain: R = %d", r_gain_);
+        RCLCPP_INFO(this->get_logger(), "RGB Gain: G = %d", g_gain_);
+        RCLCPP_INFO(this->get_logger(), "RGB Gain: B = %d", b_gain_);
+        
+        // Saturation Gain And Set
+        param_description.description = "Saturation";
+        param_description.integer_range[0].from_value = tCapability.sSaturationRange.iMin;
+        param_description.integer_range[0].to_value = tCapability.sSaturationRange.iMax;
+        int saturation;
+        CameraGetSaturation(hCamera, &saturation);
+        saturation = this->declare_parameter("saturation", saturation, param_description);
+        CameraSetSaturation(hCamera, saturation);
+        RCLCPP_INFO(this->get_logger(), "Saturation = %d", saturation);
+
+        // Gamma Gain And Set
+        param_description.integer_range[0].from_value = tCapability.sGammaRange.iMin;
+        param_description.integer_range[0].to_value = tCapability.sGammaRange.iMax;
+        int gamma;
+        CameraGetGamma(hCamera, &gamma);
+        gamma = this->declare_parameter("gamma", gamma, param_description);
+        CameraSetGamma(hCamera, gamma);
+        RCLCPP_INFO(this->get_logger(), "Gamma = %d", gamma);
     }
 }
