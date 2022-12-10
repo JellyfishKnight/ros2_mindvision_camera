@@ -238,13 +238,16 @@ namespace Helios {
         rcl_interfaces::msg::ParameterDescriptor param_description;
         param_description.integer_range.resize(1);
         param_description.integer_range[0].step = 1;
-        double exposure_line_time;
+
         //设置曝光时间
+        double exposure_line_time;
         CameraGetExposureLineTime(hCamera, &exposure_line_time);
         param_description.integer_range[0].from_value = tCapability.sExposeDesc.uiExposeTimeMin * exposure_line_time;
         param_description.integer_range[0].to_value = tCapability.sExposeDesc.uiExposeTimeMax * exposure_line_time;
-        // RCLCPP_WARN(this->get_logger(), "%f", exposure_line_time);
-        // RCLCPP_WARN(this->get_logger(), "%d", tCapability.sExposeDesc.uiExposeTimeMax);
+
+        RCLCPP_WARN(this->get_logger(), "%f", exposure_line_time);
+        RCLCPP_WARN(this->get_logger(), "%d", tCapability.sExposeDesc.uiExposeTimeMax);
+
         double exposure_time = this->declare_parameter("exposure_time", 1250, param_description);
         CameraSetExposureTime(hCamera, exposure_time);
         RCLCPP_INFO(this->get_logger(), "Exposure time = %f", exposure_time);
@@ -252,11 +255,9 @@ namespace Helios {
         param_description.description = "Analog gain";
         param_description.integer_range[0].from_value = tCapability.sExposeDesc.uiAnalogGainMin;
         param_description.integer_range[0].to_value = tCapability.sExposeDesc.uiAnalogGainMax;
-        int analog_gain;
-        CameraGetAnalogGain(hCamera, &analog_gain);
-        analog_gain = this->declare_parameter("analog_gain", analog_gain, param_description);
-        CameraSetAnalogGain(hCamera, analog_gain);
-        RCLCPP_INFO(this->get_logger(), "Analog gain = %d", analog_gain);
+        float analog_gain = this->declare_parameter("analog_gain", 3.5, param_description);
+        CameraSetAnalogGainX(hCamera, analog_gain);
+        RCLCPP_INFO(this->get_logger(), "Analog gain = %f", analog_gain);
         
         // RGB Gain And Set
         // Get default value
@@ -264,11 +265,11 @@ namespace Helios {
         // R Gain
         param_description.integer_range[0].from_value = tCapability.sRgbGainRange.iRGainMin;
         param_description.integer_range[0].to_value = tCapability.sRgbGainRange.iRGainMax;
-        r_gain_ = this->declare_parameter("rgb_gain.r", r_gain_, param_description);
+        r_gain_ = this->declare_parameter("rgb_gain.r", r_gain_ + 40, param_description);
         // G Gain
         param_description.integer_range[0].from_value = tCapability.sRgbGainRange.iGGainMin;
         param_description.integer_range[0].to_value = tCapability.sRgbGainRange.iGGainMax;
-        g_gain_ = this->declare_parameter("rgb_gain.g", g_gain_, param_description);
+        g_gain_ = this->declare_parameter("rgb_gain.g", g_gain_ + 20, param_description);
         // B Gain
         param_description.integer_range[0].from_value = tCapability.sRgbGainRange.iBGainMin;
         param_description.integer_range[0].to_value = tCapability.sRgbGainRange.iBGainMax;

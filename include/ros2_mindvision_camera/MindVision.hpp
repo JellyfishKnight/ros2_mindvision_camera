@@ -72,14 +72,14 @@ namespace Helios {
             if (!InitCam()) {
                 RCLCPP_INFO(this->get_logger(), "Init Camera Failed!");
             } else {
+                //参数声明
+                declareParameters();
                 if (!SetCam()) {
                     RCLCPP_INFO(this->get_logger(), "Set Camera Failed!");
                 } else {
                     if (!StartGrab()) {
                         RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
                     } else {
-                        //参数声明
-                        declareParameters();
                         //创建消息发布器
                         this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "ProduceTask_node", 1);
                         //创建参数监听，方便相机动态调参
