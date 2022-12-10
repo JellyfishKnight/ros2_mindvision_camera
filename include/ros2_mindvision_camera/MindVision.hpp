@@ -44,6 +44,7 @@ namespace Helios {
         rclcpp::Publisher<rm_interfaces::msg::TimeStampMat>::SharedPtr pub;
         rclcpp::Subscription<rm_interfaces::msg::ReceiveData>::SharedPtr subscriber;
         rm_interfaces::msg::TimeStampMat timeStampMatMsg;
+        rclcpp::TimerBase::SharedPtr timer;
 
         bool InitCam();
 
@@ -59,6 +60,8 @@ namespace Helios {
 
         void call_back(rm_interfaces::msg::ReceiveData::SharedPtr receiveMsgPtr);
 
+        void debugCallBack();
+
         rcl_interfaces::msg::SetParametersResult parametersCallBack(const std::vector<rclcpp::Parameter> & parameters);
 
         void declareParameters();
@@ -72,11 +75,11 @@ namespace Helios {
                 if (!SetCam()) {
                     RCLCPP_INFO(this->get_logger(), "Set Camera Failed!");
                 } else {
-                    //参数声明
-                    declareParameters();
                     if (!StartGrab()) {
                         RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
                     } else {
+                        //参数声明
+                        declareParameters();
                         //创建消息发布器
                         this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "ProduceTask_node", 1);
                         //创建参数监听，方便相机动态调参
@@ -84,41 +87,8 @@ namespace Helios {
                             std::bind(&MindVision::parametersCallBack, this, std::placeholders::_1));
                         //debug模式不监听串口
                         if (DEBUG || showArmorBox) {
-                            while (rclcpp::ok()) {
-                                double st = (double) getTickCount();
-                                receive_pop_time = rm_tools::CalWasteTime(st, freq);
-                                double st1 = (double) getTickCount();
-                                /*ignore frame height and width temperantly*/
-                                // || frame.rows != FRAMEHEIGHT || frame.cols != FRAMEWIDTH
-                                if (!Grab() ) {
-                                    missCount++;
-                                    //LOGW("FRAME GRAB FAILED!\n");
-                                    if (missCount > 5) {
-                                        StopGrab();
-                                        quitFlag = true;
-                                        RCLCPP_ERROR(this->get_logger(), "Exit for grabbing fail.");
-                                        raise(SIGINT);
-                                        exit(0);
-                                    }
-                                } else {
-                                    time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
-                                    saveMission = true;
-                                }
-                                FRAMEHEIGHT = src.rows;
-                                FRAMEWIDTH = src.cols;
-                                ImageConvert();
-                                timeStampMatMsg.receive_data.bullet_speed = 15;
-                                timeStampMatMsg.receive_data.pitch_angle = 0;
-                                if (blueTarget) 
-                                    timeStampMatMsg.receive_data.target_color = 1;
-                                else 
-                                    timeStampMatMsg.receive_data.target_color = 0;
-                                timeStampMatMsg.receive_data.target_mode = 0;
-                                timeStampMatMsg.receive_data.yaw_angle = 0;
-                                timeStampMatMsg.stamp = time_stamp;
-                                pub->publish(timeStampMatMsg);
-                                produceTime = rm_tools::CalWasteTime(st1, freq);
-                            }
+                            //创建定时器，每一毫秒发送一次图片
+                            this->timer = this->create_wall_timer(1ms, std::bind(&MindVision::debugCallBack, this));
                         } else {
                             //创建订阅器，订阅串口节点发送的消息
                             this->subscriber = this->create_subscription<rm_interfaces::msg::ReceiveData>("ReceiveTask_node", 1, std::bind(

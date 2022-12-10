@@ -140,6 +140,42 @@ namespace Helios {
         }
     }
 
+    void MindVision::debugCallBack() {
+        double st = (double) getTickCount();
+        receive_pop_time = rm_tools::CalWasteTime(st, freq);
+        double st1 = (double) getTickCount();
+        /*ignore frame height and width temperantly*/
+        // || frame.rows != FRAMEHEIGHT || frame.cols != FRAMEWIDTH
+        if (!Grab() ) {
+            missCount++;
+            //LOGW("FRAME GRAB FAILED!\n");
+            if (missCount > 5) {
+                StopGrab();
+                quitFlag = true;
+                RCLCPP_ERROR(this->get_logger(), "Exit for grabbing fail.");
+                raise(SIGINT);
+                exit(0);
+            }
+        } else {
+            time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
+            saveMission = true;
+        }
+        FRAMEHEIGHT = src.rows;
+        FRAMEWIDTH = src.cols;
+        ImageConvert();
+        timeStampMatMsg.receive_data.bullet_speed = 15;
+        timeStampMatMsg.receive_data.pitch_angle = 0;
+        if (blueTarget) 
+            timeStampMatMsg.receive_data.target_color = 1;
+        else 
+            timeStampMatMsg.receive_data.target_color = 0;
+        timeStampMatMsg.receive_data.target_mode = 0;
+        timeStampMatMsg.receive_data.yaw_angle = 0;
+        timeStampMatMsg.stamp = time_stamp;
+        pub->publish(timeStampMatMsg);
+        produceTime = rm_tools::CalWasteTime(st1, freq);
+    }
+
     rcl_interfaces::msg::SetParametersResult MindVision::parametersCallBack(const std::vector<rclcpp::Parameter> & parameters) {
         rcl_interfaces::msg::SetParametersResult result;
         result.successful = true;
@@ -207,6 +243,8 @@ namespace Helios {
         CameraGetExposureLineTime(hCamera, &exposure_line_time);
         param_description.integer_range[0].from_value = tCapability.sExposeDesc.uiExposeTimeMin * exposure_line_time;
         param_description.integer_range[0].to_value = tCapability.sExposeDesc.uiExposeTimeMax * exposure_line_time;
+        // RCLCPP_WARN(this->get_logger(), "%f", exposure_line_time);
+        // RCLCPP_WARN(this->get_logger(), "%d", tCapability.sExposeDesc.uiExposeTimeMax);
         double exposure_time = this->declare_parameter("exposure_time", 1250, param_description);
         CameraSetExposureTime(hCamera, exposure_time);
         RCLCPP_INFO(this->get_logger(), "Exposure time = %f", exposure_time);
