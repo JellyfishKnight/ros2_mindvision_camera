@@ -102,42 +102,39 @@ namespace Helios {
             return true;
         }
     }
-
+    // int check = 0;
     void MindVision::call_back(rm_interfaces::msg::ReceiveData::SharedPtr receiveMsgPtr) {
-        while (rclcpp::ok()) {
-            double st = (double) getTickCount();
-            receive_pop_time = rm_tools::CalWasteTime(st, freq);
-            double st1 = (double) getTickCount();
-            /*ignore frame height and width temperantly*/
-            // || frame.rows != FRAMEHEIGHT || frame.cols != FRAMEWIDTH
-            if (!Grab() ) {
-                missCount++;
-                //LOGW("FRAME GRAB FAILED!\n");
-                if (missCount > 5) {
-                    StopGrab();
-                    quitFlag = true;
-                    RCLCPP_ERROR(this->get_logger(), "Exit for grabbing fail.");
-                    raise(SIGINT);
-                    break;
-                }
-            } else {
-                time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
-                saveMission = true;
+        // RCLCPP_INFO(this->get_logger(), "%d", check++);
+        double st = (double) getTickCount();
+        receive_pop_time = rm_tools::CalWasteTime(st, freq);
+        double st1 = (double) getTickCount();
+        /*ignore frame height and width temperantly*/
+        // || frame.rows != FRAMEHEIGHT || frame.cols != FRAMEWIDTH
+        if (!Grab() ) {
+            missCount++;
+            //LOGW("FRAME GRAB FAILED!\n");
+            if (missCount > 5) {
+                StopGrab();
+                quitFlag = true;
+                RCLCPP_ERROR(this->get_logger(), "Exit for grabbing fail.");
+                raise(SIGINT);
             }
-            FRAMEHEIGHT = src.rows;
-            FRAMEWIDTH = src.cols;
-            ImageConvert();
-            timeStampMatMsg.receive_data = (*receiveMsgPtr);
-            timeStampMatMsg.stamp = time_stamp;
-            pub->publish(timeStampMatMsg);
-            produceTime = rm_tools::CalWasteTime(st1, freq);
-            // 读取视频空格暂停
-            if (carName == VIDEO) {
-                if (waitKey(8) == 32) {
-                    while (waitKey() != 32) {}
-                }
-            }
+        } else {
+            time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
+            saveMission = true;
         }
+        FRAMEHEIGHT = src.rows;
+        FRAMEWIDTH = src.cols;
+        ImageConvert();
+        timeStampMatMsg.receive_data = (*receiveMsgPtr);
+        timeStampMatMsg.stamp = time_stamp;
+        //通过Unique指针来进行内存的共享:(其他指针不行)
+        rm_interfaces::msg::TimeStampMat::UniquePtr sendMsgPtr(new rm_interfaces::msg::TimeStampMat(timeStampMatMsg));
+        // printf(
+        //   "address: 0x%" PRIXPTR "\n", 
+        //   reinterpret_cast<std::uintptr_t>(sendMsgPtr.get()));        
+        pub->publish(std::move(sendMsgPtr));
+        produceTime = rm_tools::CalWasteTime(st1, freq);
     }
 
     void MindVision::debugCallBack() {
@@ -245,8 +242,8 @@ namespace Helios {
         param_description.integer_range[0].from_value = tCapability.sExposeDesc.uiExposeTimeMin * exposure_line_time;
         param_description.integer_range[0].to_value = tCapability.sExposeDesc.uiExposeTimeMax * exposure_line_time;
 
-        RCLCPP_WARN(this->get_logger(), "%f", exposure_line_time);
-        RCLCPP_WARN(this->get_logger(), "%d", tCapability.sExposeDesc.uiExposeTimeMax);
+        // RCLCPP_WARN(this->get_logger(), "%f", exposure_line_time);
+        // RCLCPP_WARN(this->get_logger(), "%d", tCapability.sExposeDesc.uiExposeTimeMax);
 
         double exposure_time = this->declare_parameter("exposure_time", 1250, param_description);
         CameraSetExposureTime(hCamera, exposure_time);

@@ -68,7 +68,7 @@ namespace Helios {
 
     public:
         __attribute__ ((visibility("default")));
-        MindVision(const rclcpp::NodeOptions& options) : Node("MindVision", options) {
+        MindVision(const rclcpp::NodeOptions& options) : Node("MindVision", rclcpp::NodeOptions(options).use_intra_process_comms(true)) {
             if (!InitCam()) {
                 RCLCPP_INFO(this->get_logger(), "Init Camera Failed!");
             } else {
@@ -81,17 +81,18 @@ namespace Helios {
                         RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
                     } else {
                         //创建消息发布器
-                        this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "ProduceTask_node", 1);
+                        this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "produce_timestamp_mat", 1);
                         //创建参数监听，方便相机动态调参
                         this->params_callback_handle = this->add_on_set_parameters_callback(
                             std::bind(&MindVision::parametersCallBack, this, std::placeholders::_1));
                         //debug模式不监听串口
-                        if (DEBUG || showArmorBox) {
+                        if (DEBUG) {
                             //创建定时器，每一毫秒发送一次图片
+                            RCLCPP_INFO(this->get_logger(), "DEBUG1");
                             this->timer = this->create_wall_timer(1ms, std::bind(&MindVision::debugCallBack, this));
                         } else {
                             //创建订阅器，订阅串口节点发送的消息
-                            this->subscriber = this->create_subscription<rm_interfaces::msg::ReceiveData>("ReceiveTask_node", 1, std::bind(
+                            this->subscriber = this->create_subscription<rm_interfaces::msg::ReceiveData>("serial_receive_data", 1, std::bind(
                                 &MindVision::call_back, this, _1
                             ));
                         }
