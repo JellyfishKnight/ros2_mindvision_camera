@@ -98,12 +98,13 @@ namespace Helios {
                 RCLCPP_INFO(this->get_logger(), "Convert Failed!");
                 return false;
             }
-            timeStampMatMsg.frame = (*tempPtr);
+            converted_image = *tempPtr;
             return true;
         }
     }
+
     // int check = 0;
-    void MindVision::call_back(rm_interfaces::msg::ReceiveData::SharedPtr receiveMsgPtr) {
+    void MindVision::call_back() {
         // RCLCPP_INFO(this->get_logger(), "%d", check++);
         double st = (double) getTickCount();
         receive_pop_time = rm_tools::CalWasteTime(st, freq);
@@ -126,50 +127,9 @@ namespace Helios {
         FRAMEHEIGHT = src.rows;
         FRAMEWIDTH = src.cols;
         ImageConvert();
-        timeStampMatMsg.receive_data = (*receiveMsgPtr);
-        timeStampMatMsg.stamp = time_stamp;
         //通过Unique指针来进行内存的共享:(其他指针不行)
-        rm_interfaces::msg::TimeStampMat::UniquePtr sendMsgPtr(new rm_interfaces::msg::TimeStampMat(timeStampMatMsg));
-        // printf(
-        //   "address: 0x%" PRIXPTR "\n", 
-        //   reinterpret_cast<std::uintptr_t>(sendMsgPtr.get()));        
+        sensor_msgs::msg::Image::UniquePtr sendMsgPtr(new sensor_msgs::msg::Image(converted_image));
         pub->publish(std::move(sendMsgPtr));
-        produceTime = rm_tools::CalWasteTime(st1, freq);
-    }
-
-    void MindVision::debugCallBack() {
-        double st = (double) getTickCount();
-        receive_pop_time = rm_tools::CalWasteTime(st, freq);
-        double st1 = (double) getTickCount();
-        /*ignore frame height and width temperantly*/
-        // || frame.rows != FRAMEHEIGHT || frame.cols != FRAMEWIDTH
-        if (!Grab() ) {
-            missCount++;
-            //LOGW("FRAME GRAB FAILED!\n");
-            if (missCount > 5) {
-                StopGrab();
-                quitFlag = true;
-                RCLCPP_ERROR(this->get_logger(), "Exit for grabbing fail.");
-                raise(SIGINT);
-                exit(0);
-            }
-        } else {
-            time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
-            saveMission = true;
-        }
-        FRAMEHEIGHT = src.rows;
-        FRAMEWIDTH = src.cols;
-        ImageConvert();
-        timeStampMatMsg.receive_data.bullet_speed = 15;
-        timeStampMatMsg.receive_data.pitch_angle = 0;
-        if (blueTarget) 
-            timeStampMatMsg.receive_data.target_color = 1;
-        else 
-            timeStampMatMsg.receive_data.target_color = 0;
-        timeStampMatMsg.receive_data.target_mode = 0;
-        timeStampMatMsg.receive_data.yaw_angle = 0;
-        timeStampMatMsg.stamp = time_stamp;
-        pub->publish(timeStampMatMsg);
         produceTime = rm_tools::CalWasteTime(st1, freq);
     }
 

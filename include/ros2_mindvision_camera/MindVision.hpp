@@ -13,7 +13,6 @@
 #include <opencv2/imgcodecs.hpp>
 //self defined
 #include "cv_params/Defines.hpp"
-#include "rm_interfaces/msg/time_stamp_mat.hpp"
 #include "task_shared_params/TaskParams.hpp"
 #include "serials/SerialAccessories.hpp"
 
@@ -41,10 +40,9 @@ namespace Helios {
         Mat                     src;
         int                     r_gain_, g_gain_, b_gain_;
         OnSetParametersCallbackHandle::SharedPtr params_callback_handle;
-        rclcpp::Publisher<rm_interfaces::msg::TimeStampMat>::SharedPtr pub;
-        rclcpp::Subscription<rm_interfaces::msg::ReceiveData>::SharedPtr subscriber;
-        rm_interfaces::msg::TimeStampMat timeStampMatMsg;
-        rclcpp::TimerBase::SharedPtr timer;
+        rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub;
+        sensor_msgs::msg::Image converted_image;
+        std::thread capture;
 
         bool InitCam();
 
@@ -58,9 +56,7 @@ namespace Helios {
 
         bool ImageConvert();
 
-        void call_back(rm_interfaces::msg::ReceiveData::SharedPtr receiveMsgPtr);
-
-        void debugCallBack();
+        void call_back();
 
         rcl_interfaces::msg::SetParametersResult parametersCallBack(const std::vector<rclcpp::Parameter> & parameters);
 
@@ -81,21 +77,17 @@ namespace Helios {
                         RCLCPP_INFO(this->get_logger(), "Start Grab Failed!");
                     } else {
                         //创建消息发布器
-                        this->pub = rclcpp::create_publisher<rm_interfaces::msg::TimeStampMat>(this, "produce_timestamp_mat", 1);
+                        this->pub = rclcpp::create_publisher<sensor_msgs::msg::Image>(this, "produce_sensor_msgs", 1);
                         //创建参数监听，方便相机动态调参
                         this->params_callback_handle = this->add_on_set_parameters_callback(
                             std::bind(&MindVision::parametersCallBack, this, std::placeholders::_1));
-                        //debug模式不监听串口
-                        if (DEBUG) {
-                            //创建定时器，每一毫秒发送一次图片
-                            RCLCPP_INFO(this->get_logger(), "DEBUG1");
-                            this->timer = this->create_wall_timer(1ms, std::bind(&MindVision::debugCallBack, this));
-                        } else {
-                            //创建订阅器，订阅串口节点发送的消息
-                            this->subscriber = this->create_subscription<rm_interfaces::msg::ReceiveData>("serial_receive_data", 1, std::bind(
-                                &MindVision::call_back, this, _1
-                            ));
+                        //
+                        capture = std::thread([this]() -> void {
+                            while (rclcpp::ok()) {
+                                call_back();
+                            }
                         }
+                        );
                     }
                 }
             }
