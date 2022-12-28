@@ -64,7 +64,7 @@ namespace Helios {
 
     public:
         __attribute__ ((visibility("default")));
-        MindVision(const rclcpp::NodeOptions& options) : Node("MindVision", rclcpp::NodeOptions(options).use_intra_process_comms(true)) {
+        MindVision(const rclcpp::NodeOptions& options) : Node("MindVision", options) {
             if (!InitCam()) {
                 RCLCPP_INFO(this->get_logger(), "Init Camera Failed!");
             } else {

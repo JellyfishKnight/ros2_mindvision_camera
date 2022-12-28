@@ -105,6 +105,7 @@ namespace Helios {
 
     // int check = 0;
     void MindVision::call_back() {
+        auto start = std::chrono::steady_clock::now();
         // RCLCPP_INFO(this->get_logger(), "%d", check++);
         double st = (double) getTickCount();
         receive_pop_time = rm_tools::CalWasteTime(st, freq);
@@ -131,6 +132,8 @@ namespace Helios {
         sensor_msgs::msg::Image::UniquePtr sendMsgPtr(new sensor_msgs::msg::Image(converted_image));
         pub->publish(std::move(sendMsgPtr));
         produceTime = rm_tools::CalWasteTime(st1, freq);
+        auto end = std::chrono::steady_clock::now();
+        RCLCPP_INFO(this->get_logger(), "%d", std::chrono::duration_cast<chrono::milliseconds>(end - start).count())
     }
 
     rcl_interfaces::msg::SetParametersResult MindVision::parametersCallBack(const std::vector<rclcpp::Parameter> & parameters) {
