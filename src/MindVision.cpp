@@ -103,38 +103,7 @@ namespace Helios {
         }
     }
 
-    // int check = 0;
-    void MindVision::call_back() {
-        auto start = std::chrono::steady_clock::now();
-        // RCLCPP_INFO(this->get_logger(), "%d", check++);
-        double st = (double) getTickCount();
-        receive_pop_time = rm_tools::CalWasteTime(st, freq);
-        double st1 = (double) getTickCount();
-        /*ignore frame height and width temperantly*/
-        // || frame.rows != FRAMEHEIGHT || frame.cols != FRAMEWIDTH
-        if (!Grab() ) {
-            missCount++;
-            //LOGW("FRAME GRAB FAILED!\n");
-            if (missCount > 5) {
-                StopGrab();
-                quitFlag = true;
-                RCLCPP_ERROR(this->get_logger(), "Exit for grabbing fail.");
-                raise(SIGINT);
-            }
-        } else {
-            time_stamp = rm_tools::CalWasteTime(startT,freq)/1000; // save logs which include time_stamp, yaw, pitch
-            saveMission = true;
-        }
-        FRAMEHEIGHT = src.rows;
-        FRAMEWIDTH = src.cols;
-        ImageConvert();
-        //通过Unique指针来进行内存的共享:(其他指针不行)
-        sensor_msgs::msg::Image::UniquePtr sendMsgPtr(new sensor_msgs::msg::Image(converted_image));
-        pub->publish(std::move(sendMsgPtr));
-        produceTime = rm_tools::CalWasteTime(st1, freq);
-        auto end = std::chrono::steady_clock::now();
-        RCLCPP_INFO(this->get_logger(), "%d", std::chrono::duration_cast<chrono::milliseconds>(end - start).count())
-    }
+
 
     rcl_interfaces::msg::SetParametersResult MindVision::parametersCallBack(const std::vector<rclcpp::Parameter> & parameters) {
         rcl_interfaces::msg::SetParametersResult result;
