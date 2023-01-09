@@ -12,12 +12,9 @@
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
   <depend>cv_bridge</depend>
-  <depend>rm_tools</depend>
-  <depend>rm_math</depend>
   <depend>rclcpp_components</depend>
   <depend>camera_info_manager</depend>
-  <depend>rm_interfaces</depend>
-  <depend>task_shared_params</depend>
+  <depend>image_transport</depend>
   <depend>ament_lint_auto</depend>
   <depend>ament_lint_common</depend>
 

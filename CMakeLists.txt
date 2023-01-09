@@ -19,7 +19,6 @@ ament_auto_add_library(
 
 target_include_directories(
   ${PROJECT_NAME} PUBLIC
-  include/ros2_mindvision_camera/
   MindVisionSDK/include
 )
 
@@ -34,13 +33,11 @@ install(
 
 target_link_libraries( 
   ${PROJECT_NAME}
-  ceres Ceres::ceres
   MVSDK
-  ${OpenCV_LIBS}
   )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN Helios::MindVision
+  PLUGIN RMCamera::MVCamera
   EXECUTABLE ${PROJECT_NAME}_node
 )
 
@@ -58,4 +55,5 @@ endif()
 ament_auto_package(
   INSTALL_TO_SHARE
   launch
+  config
 )
