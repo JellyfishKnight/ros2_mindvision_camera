@@ -164,7 +164,8 @@ private:
       t_capability_.sExposeDesc.uiExposeTimeMin * exposure_line_time;
     param_desc.integer_range[0].to_value =
       t_capability_.sExposeDesc.uiExposeTimeMax * exposure_line_time;
-    double exposure_time = this->declare_parameter("exposure_time", 5000, param_desc);
+    // day light : 3000 ; night light : 5000
+    double exposure_time = this->declare_parameter("exposure_time", 3000, param_desc);
     CameraSetExposureTime(h_camera_, exposure_time);
     RCLCPP_INFO(this->get_logger(), "Exposure time = %f", exposure_time);
 
