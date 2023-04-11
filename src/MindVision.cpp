@@ -83,6 +83,7 @@ public:
     }
     // Load camera info
     camera_name_ = this->declare_parameter("camera_name", "mv_camera");
+    camera_frame_ = this->declare_parameter("camera_frame", "camera_optical_frame");
     camera_info_manager_ =
       std::make_unique<camera_info_manager::CameraInfoManager>(this, camera_name_);
     auto camera_info_url = this->declare_parameter(
@@ -108,7 +109,7 @@ public:
           CAMERA_STATUS_SUCCESS) {
           auto image_msg_ = std::make_unique<sensor_msgs::msg::Image>();
           auto info_msg_= std::make_unique<sensor_msgs::msg::CameraInfo>(camera_info_msg_);
-          image_msg_->header.frame_id = "camera_optical_frame";
+          image_msg_->header.frame_id = camera_frame_;
           image_msg_->encoding = "rgb8";
           image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight * 3);
           CameraImageProcess(h_camera_, pby_buffer_, image_msg_->data.data(), &s_frame_info_);
@@ -299,6 +300,7 @@ private:
   bool flip_image_;
 
   std::string camera_name_;
+  std::string camera_frame_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub_;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr info_pub_;
 
