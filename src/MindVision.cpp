@@ -168,6 +168,7 @@ private:
     // day light : 3000 ; night light : 5000
     double exposure_time = this->declare_parameter("exposure_time", 3000, param_desc);
     CameraSetExposureTime(h_camera_, exposure_time);
+    CameraSetFrameSpeed(h_camera_,2);
     RCLCPP_INFO(this->get_logger(), "Exposure time = %f", exposure_time);
 
     // Analog gain
