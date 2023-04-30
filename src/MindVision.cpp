@@ -102,11 +102,10 @@ public:
     capture_thread_ = std::thread{[this]() -> void {
       RCLCPP_INFO(this->get_logger(), "Publishing image!");
 
-
+    CameraSdkStatus ret;
       while (rclcpp::ok()) {
-        if (
-          CameraGetImageBuffer(h_camera_, &s_frame_info_, &pby_buffer_, 1000) ==
-          CAMERA_STATUS_SUCCESS) {
+        ret = CameraGetImageBuffer(h_camera_, &s_frame_info_, &pby_buffer_, 1000);
+        if (ret == CAMERA_STATUS_SUCCESS) {
           auto image_msg_ = std::make_unique<sensor_msgs::msg::Image>();
           auto info_msg_= std::make_unique<sensor_msgs::msg::CameraInfo>(camera_info_msg_);
           image_msg_->header.frame_id = camera_frame_;
@@ -133,6 +132,8 @@ public:
           // 否则再次调用CameraGetImageBuffer时，程序将被挂起一直阻塞，
           // 直到其他线程中调用CameraReleaseImageBuffer来释放了buffer
           CameraReleaseImageBuffer(h_camera_, pby_buffer_);
+        }else{
+            RCLCPP_ERROR(get_logger(), "Image get failed: ret = %d", ret);
         }
       }
     }};
