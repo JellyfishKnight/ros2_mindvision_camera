@@ -14,7 +14,7 @@ import launch
 def generate_launch_description():
     params_file = os.path.join(get_package_share_directory('mindvision_camera'), 'config', 'camera_params.yaml')
 
-    camera_info_url = 'package://mindvision_camera/config/camera_info_mv133_infantry3.yaml'
+    camera_info_url = 'package://mindvision_camera/config/camera_info.yaml'
 
     return launch.LaunchDescription([
         DeclareLaunchArgument(name='params_file',

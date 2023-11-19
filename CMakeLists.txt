@@ -34,6 +34,7 @@ install(
 target_link_libraries( 
   ${PROJECT_NAME}
   MVSDK
+  ${OpenCV_LIBS}
   )
 
 rclcpp_components_register_node(${PROJECT_NAME}

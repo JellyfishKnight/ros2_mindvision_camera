@@ -116,22 +116,18 @@ public:
           image_msg_ = std::make_unique<sensor_msgs::msg::Image>();
           auto info_msg_ =
               std::make_unique<sensor_msgs::msg::CameraInfo>(camera_info_msg_);
+          info_msg_->header.stamp = image_msg_->header.stamp = this->now();
           image_msg_->header.frame_id = "camera_optical_frame";
           image_msg_->encoding = "rgb8";
-          image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight *
-                                  3);
+          image_msg_->height = s_frame_info_.iHeight;
+          image_msg_->width = s_frame_info_.iWidth;
+          image_msg_->step = s_frame_info_.iWidth * 3;
+          image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight * 3);
           CameraImageProcess(h_camera_, pby_buffer_, image_msg_->data.data(),
                              &s_frame_info_);
           if (flip_image_) {
             CameraFlipFrameBuffer(image_msg_->data.data(), &s_frame_info_, 3);
           }
-          info_msg_->header.stamp = image_msg_->header.stamp = this->now();
-          image_msg_->height = s_frame_info_.iHeight;
-          image_msg_->width = s_frame_info_.iWidth;
-          image_msg_->step = s_frame_info_.iWidth * 3;
-          image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight *
-                                  3);
-
           if (get_node_options().use_intra_process_comms()) {
             RCLCPP_DEBUG_STREAM(get_logger(),
                                 "Image message address [PUBLISH]:\t"
@@ -150,44 +146,6 @@ public:
         }
       }
     }};
-    if (record_on_) {
-      record_thread_ = std::thread([this]() -> void {
-        tt = time(nullptr);
-        localtime_r(&tt, &ttime);
-        time_start_sec = ttime.tm_sec;
-        time_start_min = ttime.tm_min;
-        time_start_hour = ttime.tm_hour;
-        strftime(now_, 64, "%Y-%m-%d_%H_%M_S", &ttime);
-        video_writer = cv::VideoWriter(
-            cv::format("%s/%s.avi", recorder_save_root_.c_str(), now_),
-            cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 5.0,
-            cv::Size(1280, 1024));
-        RCLCPP_INFO(this->get_logger(), "Start recording!");
-        while (rclcpp::ok()) {
-          sensor_msgs::msg::Image::SharedPtr image_shared_ptr;
-          image_shared_ptr->data = image_msg_->data;
-          auto cv_image = cv_bridge::toCvCopy(image_shared_ptr, "rgb8")->image;
-          if (!cv_image.empty()) {
-            video_writer.write(cv_image);
-            tt = time(nullptr);
-            localtime_r(&tt, &ttime);
-            if ((((ttime.tm_hour - time_start_hour) * 60 + ttime.tm_min -
-                  time_start_min) * 60 + (ttime.tm_sec - time_start_sec)) > 60) {
-              video_writer.release();
-              strftime(now_, 64, "%Y-%m-%d_%H_%M_S", &ttime);
-              video_writer =  cv::VideoWriter(cv::format("%s/%s.avi", recorder_save_root_.c_str(), now_),
-                              cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 5.0,
-                              cv::Size(1280, 1024));
-              time_start_sec = ttime.tm_sec;
-              time_start_min = ttime.tm_min;
-              time_start_hour = ttime.tm_hour;
-            }
-          } else {
-            RCLCPP_ERROR(this->get_logger(), "Image empty!");
-          }
-        }
-      });
-    }
   }
 
   ~MVCamera() override {
@@ -283,10 +241,7 @@ private:
     gamma = this->declare_parameter("gamma", gamma, param_desc);
     CameraSetGamma(h_camera_, gamma);
     RCLCPP_INFO(this->get_logger(), "Gamma = %d", gamma);
-    // Recorder
-    record_on_ = this->declare_parameter("record_on", true);
-    recorder_save_root_ =
-        this->declare_parameter("recorder_save_root", "/home/helios/Videos");
+        this->declare_parameter("recorder_save_root", "/home/jk/Videos");
     // Flip
     flip_image_ = this->declare_parameter("flip_image", false);
   }
@@ -366,16 +321,6 @@ private:
 
   image_transport::CameraPublisher camera_pub_;
   sensor_msgs::msg::Image::UniquePtr image_msg_;
-  // Recorder
-  bool record_on_;
-  std::string recorder_save_root_;
-  cv::VideoWriter video_writer;
-  int time_start_sec = 0;
-  int time_start_min = 0;
-  int time_start_hour = 0;
-  char now_[64];
-  std::time_t tt;
-  struct tm ttime {};
 
   // RGB Gain
   int r_gain_, g_gain_, b_gain_;
