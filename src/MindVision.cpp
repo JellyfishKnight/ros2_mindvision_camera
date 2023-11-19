@@ -5,6 +5,7 @@
 
 // ROS
 #include <camera_info_manager/camera_info_manager.hpp>
+#include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -17,13 +18,15 @@
 #include <thread>
 #include <vector>
 
-namespace RMCamera
-{
-class MVCamera : public rclcpp::Node
-{
+// OpenCV
+#include <opencv2/core.hpp>
+#include <opencv2/videoio.hpp>
+
+namespace RMCamera {
+class MVCamera : public rclcpp::Node {
 public:
-  explicit MVCamera(const rclcpp::NodeOptions & options) : Node("mv_camera", options)
-  {
+  explicit MVCamera(const rclcpp::NodeOptions &options)
+      : Node("mv_camera", options) {
     RCLCPP_INFO(this->get_logger(), "Starting MVCameraNode!");
 
     CameraSdkInit(1);
@@ -55,7 +58,6 @@ public:
     // 获得相机的特性描述结构体。该结构体中包含了相机可设置的各种参数的范围信息。决定了相关函数的参数
     CameraGetCapability(h_camera_, &t_capability_);
 
-
     // 设置手动曝光
     CameraSetAeState(h_camera_, false);
 
@@ -72,45 +74,54 @@ public:
     // Create camera publisher
     // rqt_image_view can't subscribe image msg with sensor_data QoS
     // https://github.com/ros-visualization/rqt/issues/187
-    bool use_sensor_data_qos = this->declare_parameter("use_sensor_data_qos", false);
-    auto qos = use_sensor_data_qos ? rmw_qos_profile_sensor_data : rmw_qos_profile_default;
+    bool use_sensor_data_qos =
+        this->declare_parameter("use_sensor_data_qos", false);
+    auto qos = use_sensor_data_qos ? rmw_qos_profile_sensor_data
+                                   : rmw_qos_profile_default;
 
     if (options.use_intra_process_comms()) {
       image_pub_ = create_publisher<sensor_msgs::msg::Image>("image_raw", 10);
-      info_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", 10);}
-    else{
-      camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
+      info_pub_ =
+          create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", 10);
+    } else {
+      camera_pub_ =
+          image_transport::create_camera_publisher(this, "image_raw", qos);
     }
     // Load camera info
     camera_name_ = this->declare_parameter("camera_name", "mv_camera");
     camera_info_manager_ =
-      std::make_unique<camera_info_manager::CameraInfoManager>(this, camera_name_);
+        std::make_unique<camera_info_manager::CameraInfoManager>(this,
+                                                                 camera_name_);
     auto camera_info_url = this->declare_parameter(
-      "camera_info_url", "package://mindvision_camera/config/camera_info.yaml");
+        "camera_info_url",
+        "package://mindvision_camera/config/camera_info.yaml");
     if (camera_info_manager_->validateURL(camera_info_url)) {
       camera_info_manager_->loadCameraInfo(camera_info_url);
       camera_info_msg_ = camera_info_manager_->getCameraInfo();
     } else {
-      RCLCPP_WARN(this->get_logger(), "Invalid camera info URL: %s", camera_info_url.c_str());
+      RCLCPP_WARN(this->get_logger(), "Invalid camera info URL: %s",
+                  camera_info_url.c_str());
     }
 
     // Add callback to the set parameter event
     params_callback_handle_ = this->add_on_set_parameters_callback(
-      std::bind(&MVCamera::parametersCallback, this, std::placeholders::_1));
+        std::bind(&MVCamera::parametersCallback, this, std::placeholders::_1));
 
     capture_thread_ = std::thread{[this]() -> void {
       RCLCPP_INFO(this->get_logger(), "Publishing image!");
-
-    CameraSdkStatus ret;
+      CameraSdkStatus ret;
       while (rclcpp::ok()) {
         ret = CameraGetImageBuffer(h_camera_, &s_frame_info_, &pby_buffer_, 1000);
         if (ret == CAMERA_STATUS_SUCCESS) {
-          auto image_msg_ = std::make_unique<sensor_msgs::msg::Image>();
-          auto info_msg_= std::make_unique<sensor_msgs::msg::CameraInfo>(camera_info_msg_);
-          image_msg_->header.frame_id = "camera";
+          image_msg_ = std::make_unique<sensor_msgs::msg::Image>();
+          auto info_msg_ =
+              std::make_unique<sensor_msgs::msg::CameraInfo>(camera_info_msg_);
+          image_msg_->header.frame_id = "camera_optical_frame";
           image_msg_->encoding = "rgb8";
-          image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight * 3);
-          CameraImageProcess(h_camera_, pby_buffer_, image_msg_->data.data(), &s_frame_info_);
+          image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight *
+                                  3);
+          CameraImageProcess(h_camera_, pby_buffer_, image_msg_->data.data(),
+                             &s_frame_info_);
           if (flip_image_) {
             CameraFlipFrameBuffer(image_msg_->data.data(), &s_frame_info_, 3);
           }
@@ -118,10 +129,13 @@ public:
           image_msg_->height = s_frame_info_.iHeight;
           image_msg_->width = s_frame_info_.iWidth;
           image_msg_->step = s_frame_info_.iWidth * 3;
-          image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight * 3);
+          image_msg_->data.resize(s_frame_info_.iWidth * s_frame_info_.iHeight *
+                                  3);
 
           if (get_node_options().use_intra_process_comms()) {
-            RCLCPP_DEBUG_STREAM(get_logger(), "Image message address [PUBLISH]:\t" << image_msg_.get());
+            RCLCPP_DEBUG_STREAM(get_logger(),
+                                "Image message address [PUBLISH]:\t"
+                                    << image_msg_.get());
             image_pub_->publish(std::move(image_msg_));
             info_pub_->publish(std::move(info_msg_));
           } else {
@@ -131,27 +145,65 @@ public:
           // 否则再次调用CameraGetImageBuffer时，程序将被挂起一直阻塞，
           // 直到其他线程中调用CameraReleaseImageBuffer来释放了buffer
           CameraReleaseImageBuffer(h_camera_, pby_buffer_);
-        }else{
-            RCLCPP_ERROR(get_logger(), "Image get failed: ret = %d", ret);
+        } else {
+          RCLCPP_ERROR(get_logger(), "Image get failed: ret = %d", ret);
         }
       }
     }};
+    if (record_on_) {
+      record_thread_ = std::thread([this]() -> void {
+        tt = time(nullptr);
+        localtime_r(&tt, &ttime);
+        time_start_sec = ttime.tm_sec;
+        time_start_min = ttime.tm_min;
+        time_start_hour = ttime.tm_hour;
+        strftime(now_, 64, "%Y-%m-%d_%H_%M_S", &ttime);
+        video_writer = cv::VideoWriter(
+            cv::format("%s/%s.avi", recorder_save_root_.c_str(), now_),
+            cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 5.0,
+            cv::Size(1280, 1024));
+        RCLCPP_INFO(this->get_logger(), "Start recording!");
+        while (rclcpp::ok()) {
+          sensor_msgs::msg::Image::SharedPtr image_shared_ptr;
+          image_shared_ptr->data = image_msg_->data;
+          auto cv_image = cv_bridge::toCvCopy(image_shared_ptr, "rgb8")->image;
+          if (!cv_image.empty()) {
+            video_writer.write(cv_image);
+            tt = time(nullptr);
+            localtime_r(&tt, &ttime);
+            if ((((ttime.tm_hour - time_start_hour) * 60 + ttime.tm_min -
+                  time_start_min) * 60 + (ttime.tm_sec - time_start_sec)) > 60) {
+              video_writer.release();
+              strftime(now_, 64, "%Y-%m-%d_%H_%M_S", &ttime);
+              video_writer =  cv::VideoWriter(cv::format("%s/%s.avi", recorder_save_root_.c_str(), now_),
+                              cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 5.0,
+                              cv::Size(1280, 1024));
+              time_start_sec = ttime.tm_sec;
+              time_start_min = ttime.tm_min;
+              time_start_hour = ttime.tm_hour;
+            }
+          } else {
+            RCLCPP_ERROR(this->get_logger(), "Image empty!");
+          }
+        }
+      });
+    }
   }
 
-  ~MVCamera() override
-  {
+  ~MVCamera() override {
     if (capture_thread_.joinable()) {
       capture_thread_.join();
     }
-
+    if (record_thread_.joinable()) {
+      record_thread_.join();
+    }
     CameraUnInit(h_camera_);
 
     RCLCPP_INFO(this->get_logger(), "Camera node destroyed!");
   }
 
 private:
-  void declareParameters()
-  {
+  void declareParameters() {
     rcl_interfaces::msg::ParameterDescriptor param_desc;
     param_desc.integer_range.resize(1);
     param_desc.integer_range[0].step = 1;
@@ -162,22 +214,26 @@ private:
     double exposure_line_time;
     CameraGetExposureLineTime(h_camera_, &exposure_line_time);
     param_desc.integer_range[0].from_value =
-      t_capability_.sExposeDesc.uiExposeTimeMin * exposure_line_time;
+        t_capability_.sExposeDesc.uiExposeTimeMin * exposure_line_time;
     param_desc.integer_range[0].to_value =
-      t_capability_.sExposeDesc.uiExposeTimeMax * exposure_line_time;
+        t_capability_.sExposeDesc.uiExposeTimeMax * exposure_line_time;
     // day light : 3000 ; night light : 5000
-    double exposure_time = this->declare_parameter("exposure_time", 4000, param_desc);
+    double exposure_time =
+        this->declare_parameter("exposure_time", 4000, param_desc);
     CameraSetExposureTime(h_camera_, exposure_time);
-    CameraSetFrameSpeed(h_camera_,2);
+    CameraSetFrameSpeed(h_camera_, 2);
     RCLCPP_INFO(this->get_logger(), "Exposure time = %f", exposure_time);
 
     // Analog gain
     param_desc.description = "Analog gain";
-    param_desc.integer_range[0].from_value = t_capability_.sExposeDesc.uiAnalogGainMin;
-    param_desc.integer_range[0].to_value = t_capability_.sExposeDesc.uiAnalogGainMax;
+    param_desc.integer_range[0].from_value =
+        t_capability_.sExposeDesc.uiAnalogGainMin;
+    param_desc.integer_range[0].to_value =
+        t_capability_.sExposeDesc.uiAnalogGainMax;
     int analog_gain;
     CameraGetAnalogGain(h_camera_, &analog_gain);
-    analog_gain = this->declare_parameter("analog_gain", analog_gain, param_desc);
+    analog_gain =
+        this->declare_parameter("analog_gain", analog_gain, param_desc);
     CameraSetAnalogGain(h_camera_, analog_gain);
     RCLCPP_INFO(this->get_logger(), "Analog gain = %d", analog_gain);
 
@@ -185,16 +241,22 @@ private:
     // Get default value
     CameraGetGain(h_camera_, &r_gain_, &g_gain_, &b_gain_);
     // R Gain
-    param_desc.integer_range[0].from_value = t_capability_.sRgbGainRange.iRGainMin;
-    param_desc.integer_range[0].to_value = t_capability_.sRgbGainRange.iRGainMax;
+    param_desc.integer_range[0].from_value =
+        t_capability_.sRgbGainRange.iRGainMin;
+    param_desc.integer_range[0].to_value =
+        t_capability_.sRgbGainRange.iRGainMax;
     r_gain_ = this->declare_parameter("rgb_gain.r", r_gain_, param_desc);
     // G Gain
-    param_desc.integer_range[0].from_value = t_capability_.sRgbGainRange.iGGainMin;
-    param_desc.integer_range[0].to_value = t_capability_.sRgbGainRange.iGGainMax;
+    param_desc.integer_range[0].from_value =
+        t_capability_.sRgbGainRange.iGGainMin;
+    param_desc.integer_range[0].to_value =
+        t_capability_.sRgbGainRange.iGGainMax;
     g_gain_ = this->declare_parameter("rgb_gain.g", g_gain_, param_desc);
     // B Gain
-    param_desc.integer_range[0].from_value = t_capability_.sRgbGainRange.iBGainMin;
-    param_desc.integer_range[0].to_value = t_capability_.sRgbGainRange.iBGainMax;
+    param_desc.integer_range[0].from_value =
+        t_capability_.sRgbGainRange.iBGainMin;
+    param_desc.integer_range[0].to_value =
+        t_capability_.sRgbGainRange.iBGainMax;
     b_gain_ = this->declare_parameter("rgb_gain.b", b_gain_, param_desc);
     // Set gain
     CameraSetGain(h_camera_, r_gain_, g_gain_, b_gain_);
@@ -204,7 +266,8 @@ private:
 
     // Saturation
     param_desc.description = "Saturation";
-    param_desc.integer_range[0].from_value = t_capability_.sSaturationRange.iMin;
+    param_desc.integer_range[0].from_value =
+        t_capability_.sSaturationRange.iMin;
     param_desc.integer_range[0].to_value = t_capability_.sSaturationRange.iMax;
     int saturation;
     CameraGetSaturation(h_camera_, &saturation);
@@ -220,62 +283,71 @@ private:
     gamma = this->declare_parameter("gamma", gamma, param_desc);
     CameraSetGamma(h_camera_, gamma);
     RCLCPP_INFO(this->get_logger(), "Gamma = %d", gamma);
-
+    // Recorder
+    record_on_ = this->declare_parameter("record_on", true);
+    recorder_save_root_ =
+        this->declare_parameter("recorder_save_root", "/home/helios/Videos");
     // Flip
     flip_image_ = this->declare_parameter("flip_image", false);
   }
 
-  rcl_interfaces::msg::SetParametersResult parametersCallback(
-    const std::vector<rclcpp::Parameter> & parameters)
-  {
+  rcl_interfaces::msg::SetParametersResult
+  parametersCallback(const std::vector<rclcpp::Parameter> &parameters) {
     rcl_interfaces::msg::SetParametersResult result;
     result.successful = true;
-    for (const auto & param : parameters) {
+    for (const auto &param : parameters) {
       if (param.get_name() == "exposure_time") {
         int status = CameraSetExposureTime(h_camera_, param.as_int());
         if (status != CAMERA_STATUS_SUCCESS) {
           result.successful = false;
-          result.reason = "Failed to set exposure time, status = " + std::to_string(status);
+          result.reason =
+              "Failed to set exposure time, status = " + std::to_string(status);
         }
       } else if (param.get_name() == "analog_gain") {
         int status = CameraSetAnalogGain(h_camera_, param.as_int());
         if (status != CAMERA_STATUS_SUCCESS) {
           result.successful = false;
-          result.reason = "Failed to set analog gain, status = " + std::to_string(status);
+          result.reason =
+              "Failed to set analog gain, status = " + std::to_string(status);
         }
       } else if (param.get_name() == "rgb_gain.r") {
         r_gain_ = param.as_int();
         int status = CameraSetGain(h_camera_, r_gain_, g_gain_, b_gain_);
         if (status != CAMERA_STATUS_SUCCESS) {
           result.successful = false;
-          result.reason = "Failed to set RGB gain, status = " + std::to_string(status);
+          result.reason =
+              "Failed to set RGB gain, status = " + std::to_string(status);
         }
       } else if (param.get_name() == "rgb_gain.g") {
         g_gain_ = param.as_int();
         int status = CameraSetGain(h_camera_, r_gain_, g_gain_, b_gain_);
         if (status != CAMERA_STATUS_SUCCESS) {
           result.successful = false;
-          result.reason = "Failed to set RGB gain, status = " + std::to_string(status);
+          result.reason =
+              "Failed to set RGB gain, status = " + std::to_string(status);
         }
       } else if (param.get_name() == "rgb_gain.b") {
         b_gain_ = param.as_int();
         int status = CameraSetGain(h_camera_, r_gain_, g_gain_, b_gain_);
         if (status != CAMERA_STATUS_SUCCESS) {
           result.successful = false;
-          result.reason = "Failed to set RGB gain, status = " + std::to_string(status);
+          result.reason =
+              "Failed to set RGB gain, status = " + std::to_string(status);
         }
       } else if (param.get_name() == "saturation") {
         int status = CameraSetSaturation(h_camera_, param.as_int());
         if (status != CAMERA_STATUS_SUCCESS) {
           result.successful = false;
-          result.reason = "Failed to set saturation, status = " + std::to_string(status);
+          result.reason =
+              "Failed to set saturation, status = " + std::to_string(status);
         }
       } else if (param.get_name() == "gamma") {
         int gamma = param.as_int();
         int status = CameraSetGamma(h_camera_, gamma);
         if (status != CAMERA_STATUS_SUCCESS) {
           result.successful = false;
-          result.reason = "Failed to set Gamma, status = " + std::to_string(status);
+          result.reason =
+              "Failed to set Gamma, status = " + std::to_string(status);
         }
       } else if (param.get_name() == "flip_image") {
         flip_image_ = param.as_bool();
@@ -288,16 +360,25 @@ private:
   }
 
   int h_camera_;
-  uint8_t * pby_buffer_;
-  tSdkCameraCapbility t_capability_;  // 设备描述信息
-  tSdkFrameHead s_frame_info_;        // 图像帧头信息
-
+  uint8_t *pby_buffer_;
+  tSdkCameraCapbility t_capability_; // 设备描述信息
+  tSdkFrameHead s_frame_info_;       // 图像帧头信息
 
   image_transport::CameraPublisher camera_pub_;
+  sensor_msgs::msg::Image::UniquePtr image_msg_;
+  // Recorder
+  bool record_on_;
+  std::string recorder_save_root_;
+  cv::VideoWriter video_writer;
+  int time_start_sec = 0;
+  int time_start_min = 0;
+  int time_start_hour = 0;
+  char now_[64];
+  std::time_t tt;
+  struct tm ttime {};
 
   // RGB Gain
   int r_gain_, g_gain_, b_gain_;
-
   bool flip_image_;
 
   std::string camera_name_;
@@ -309,15 +390,16 @@ private:
   sensor_msgs::msg::CameraInfo camera_info_msg_;
 
   std::thread capture_thread_;
+  std::thread record_thread_;
 
   OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
 };
 
-}  // namespace RMCamera
+} // namespace RMCamera
 
 #include "rclcpp_components/register_node_macro.hpp"
 
 // Register the component with class_loader.
-// This acts as a sort of entry point, allowing the component to be discoverable when its library
-// is being loaded into a running process.
+// This acts as a sort of entry point, allowing the component to be discoverable
+// when its library is being loaded into a running process.
 RCLCPP_COMPONENTS_REGISTER_NODE(RMCamera::MVCamera)
