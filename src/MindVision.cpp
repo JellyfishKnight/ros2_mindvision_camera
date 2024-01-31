@@ -42,7 +42,7 @@ public:
     // 没有连接设备
     if (i_camera_counts == 0) {
       RCLCPP_ERROR(this->get_logger(), "No camera found!");
-      return;
+      exit(-1);
     }
 
     // 相机初始化。初始化成功后，才能调用任何其他相机相关的操作接口
@@ -52,7 +52,7 @@ public:
     RCLCPP_INFO(this->get_logger(), "Init state = %d", i_status);
     if (i_status != CAMERA_STATUS_SUCCESS) {
       RCLCPP_ERROR(this->get_logger(), "Init failed!");
-      return;
+      exit(-1);
     }
 
     // 获得相机的特性描述结构体。该结构体中包含了相机可设置的各种参数的范围信息。决定了相关函数的参数
@@ -143,6 +143,7 @@ public:
           CameraReleaseImageBuffer(h_camera_, pby_buffer_);
         } else {
           RCLCPP_ERROR(get_logger(), "Image get failed: ret = %d", ret);
+          exit(-1);
         }
       }
     }};
