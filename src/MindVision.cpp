@@ -153,9 +153,6 @@ public:
     if (capture_thread_.joinable()) {
       capture_thread_.join();
     }
-    if (record_thread_.joinable()) {
-      record_thread_.join();
-    }
     CameraUnInit(h_camera_);
 
     RCLCPP_INFO(this->get_logger(), "Camera node destroyed!");
@@ -336,7 +333,6 @@ private:
   sensor_msgs::msg::CameraInfo camera_info_msg_;
 
   std::thread capture_thread_;
-  std::thread record_thread_;
 
   OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
 };
